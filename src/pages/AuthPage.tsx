@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { useAuth } from '@/hooks/useAuth'
+import { Navigate } from 'react-router-dom'
 
 const provider = new GoogleAuthProvider()
 
 export default function AuthPage() {
+  const { user } = useAuth()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  if (user) return <Navigate to="/" replace />
 
   async function signInWithGoogle() {
     setError('')

@@ -39,11 +39,17 @@ export interface ParsedTicketData {
   type: TicketType
   // flight / transport
   flightNumber?: string
-  carrier?: string
+  airline?: string
   origin?: string
   destination?: string
   departureTime?: string
   arrivalTime?: string
+  depTerminal?: string
+  arrTerminal?: string
+  cabinClass?: string
+  baggage?: string
+  flightDuration?: string
+  meals?: string
   // hotel
   hotelName?: string
   checkIn?: string
@@ -74,10 +80,11 @@ export interface Ticket {
   uploadedAt: number
   fileName: string
   fileType: string
-  fileUrl?: string
+  fileUrl?: string       // Firebase Storage URL (requires Storage rules)
+  localFileKey?: string  // IndexedDB key for local file (always available on this device)
   parsed: ParsedTicketData
   manualOverrides?: Partial<ParsedTicketData>
-  assignedMemberUid?: string // which trip member this ticket belongs to
+  assignedMemberUid?: string
 }
 
 export interface ItineraryDay {

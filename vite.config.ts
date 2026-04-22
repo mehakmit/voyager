@@ -24,7 +24,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Activate the new service worker immediately instead of waiting for
+        // all tabs to close — ensures the pdfjs .mjs worker is cached on next load.
+        skipWaiting: true,
+        clientsClaim: true,
+        globPatterns: ['**/*.{js,mjs,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,

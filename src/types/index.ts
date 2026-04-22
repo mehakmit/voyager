@@ -16,6 +16,7 @@ export interface TripMember {
 export interface TripSettings {
   showCar: boolean
   showExpenses: boolean
+  baseCurrency: string
 }
 
 export interface Trip {
@@ -32,7 +33,7 @@ export interface Trip {
   inviteToken?: string
 }
 
-export type TicketType = 'flight' | 'train' | 'hotel' | 'bus' | 'ferry' | 'other'
+export type TicketType = 'flight' | 'train' | 'hotel' | 'car' | 'bus' | 'ferry' | 'other'
 
 export interface ParsedTicketData {
   type: TicketType
@@ -47,6 +48,14 @@ export interface ParsedTicketData {
   hotelName?: string
   checkIn?: string
   checkOut?: string
+  roomType?: string
+  // car rental
+  rentalCompany?: string
+  pickupLocation?: string
+  dropoffLocation?: string
+  pickupDateTime?: string
+  dropoffDateTime?: string
+  vehicleType?: string
   // common
   passengerName?: string
   bookingRef?: string
@@ -54,6 +63,7 @@ export interface ParsedTicketData {
   seat?: string
   terminal?: string
   date?: string
+  allDates?: string[]
   rawText?: string
 }
 
@@ -64,15 +74,14 @@ export interface Ticket {
   uploadedAt: number
   fileName: string
   fileType: string
-  fileUrl?: string // if stored in Firebase Storage
-  localPath?: string
+  fileUrl?: string
   parsed: ParsedTicketData
   manualOverrides?: Partial<ParsedTicketData>
-  assignedTo?: string[] // uids
+  assignedMemberUid?: string // which trip member this ticket belongs to
 }
 
 export interface ItineraryDay {
-  date: string // ISO date YYYY-MM-DD
+  date: string
   items: ItineraryItem[]
 }
 
@@ -81,7 +90,7 @@ export interface ItineraryItem {
   time?: string
   title: string
   description?: string
-  ticketId?: string // linked ticket
+  ticketId?: string
   type: 'ticket' | 'activity' | 'note'
 }
 
@@ -92,11 +101,11 @@ export interface Expense {
   amount: number
   currency: string
   paidBy: string // uid
-  splitWith: string[] // uids
+  splitWith: string[] // uids of everyone splitting, including payer
   date: number
   category: string
-  receiptUrl?: string
   createdAt: number
+  isSettlement?: boolean
 }
 
 export interface CarDetails {

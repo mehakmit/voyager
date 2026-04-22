@@ -21,7 +21,7 @@ export default function TripsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <header className="flex items-center justify-between px-4 py-4 border-b border-slate-800">
+      <header className="flex items-center justify-between px-4 pb-4 pt-safe border-b border-slate-800">
         <h1 className="text-xl font-bold">Voyager</h1>
         <button onClick={() => signOut(auth)} className="text-slate-400 hover:text-white">
           <LogOut size={18} />

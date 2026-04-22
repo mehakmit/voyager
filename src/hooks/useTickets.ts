@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { extractText } from '@/lib/extractText'
-import { parseRawText } from '@/lib/parseTicket'
+import { parseAllTickets } from '@/lib/parseTicket'
 import { nanoid } from '@/lib/nanoid'
 import type { Ticket, ParsedTicketData } from '@/types'
 
@@ -22,29 +22,40 @@ export function useTickets(tripId: string | undefined) {
     })
   }, [tripId])
 
-  async function uploadTicket(file: File, uploadedBy: string) {
+  // Returns IDs of created tickets (one per flight/booking in the file)
+  async function uploadTicket(file: File, uploadedBy: string): Promise<string[]> {
     const rawText = await extractText(file)
-    const parsed = parseRawText(rawText)
-    const id = nanoid()
-    const ticket: Omit<Ticket, 'id'> = {
-      tripId: tripId!,
-      uploadedBy,
-      uploadedAt: Date.now(),
-      fileName: file.name,
-      fileType: file.type,
-      parsed,
+    const parsedList = parseAllTickets(rawText)
+    const ids: string[] = []
+
+    for (const parsed of parsedList) {
+      const id = nanoid()
+      const ticket: Omit<Ticket, 'id'> = {
+        tripId: tripId!,
+        uploadedBy,
+        uploadedAt: Date.now(),
+        fileName: file.name,
+        fileType: file.type,
+        parsed,
+      }
+      await setDoc(doc(db, 'tickets', id), ticket)
+      ids.push(id)
     }
-    await setDoc(doc(db, 'tickets', id), ticket)
-    return id
+
+    return ids
   }
 
   async function updateTicket(ticketId: string, overrides: Partial<ParsedTicketData>) {
     await updateDoc(doc(db, 'tickets', ticketId), { manualOverrides: overrides })
   }
 
+  async function assignTicket(ticketId: string, memberUid: string | null) {
+    await updateDoc(doc(db, 'tickets', ticketId), { assignedMemberUid: memberUid })
+  }
+
   async function deleteTicket(ticketId: string) {
     await deleteDoc(doc(db, 'tickets', ticketId))
   }
 
-  return { tickets, loading, uploadTicket, updateTicket, deleteTicket }
+  return { tickets, loading, uploadTicket, updateTicket, assignTicket, deleteTicket }
 }

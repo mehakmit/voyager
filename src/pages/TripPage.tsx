@@ -9,10 +9,11 @@ import TicketsTab from '@/components/TicketsTab'
 import ItineraryTab from '@/components/ItineraryTab'
 import ExpensesTab from '@/components/ExpensesTab'
 import CarTab from '@/components/CarTab'
+import HotelTab from '@/components/HotelTab'
 import Countdown from '@/components/Countdown'
 import TripSettingsModal from '@/components/TripSettingsModal'
 
-type Tab = 'tickets' | 'itinerary' | 'expenses' | 'car'
+type Tab = 'tickets' | 'itinerary' | 'hotel' | 'expenses' | 'car'
 
 export default function TripPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,11 +33,17 @@ export default function TripPage() {
   if (!trip) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading...</div>
 
   const isOwner = trip.ownerId === user?.uid
-  const tabs: Tab[] = ['tickets', 'itinerary', ...(trip.settings.showExpenses ? ['expenses' as Tab] : []), ...(trip.settings.showCar ? ['car' as Tab] : [])]
+  const tabs: Tab[] = [
+    'tickets',
+    'itinerary',
+    'hotel',
+    ...(trip.settings.showExpenses ? ['expenses' as Tab] : []),
+    ...(trip.settings.showCar ? ['car' as Tab] : []),
+  ]
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      <header className="flex items-center gap-3 px-4 py-4 border-b border-slate-800">
+      <header className="flex items-center gap-3 px-4 pb-4 pt-safe border-b border-slate-800">
         <button onClick={() => navigate('/')} className="text-slate-400 hover:text-white">
           <ArrowLeft size={20} />
         </button>
@@ -53,12 +60,12 @@ export default function TripPage() {
 
       <Countdown startDate={trip.startDate} />
 
-      <nav className="flex border-b border-slate-800 px-4">
+      <nav className="flex border-b border-slate-800 overflow-x-auto px-2">
         {tabs.map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors border-b-2 -mb-px ${
               activeTab === tab
                 ? 'border-indigo-500 text-white'
                 : 'border-transparent text-slate-400 hover:text-white'
@@ -69,10 +76,11 @@ export default function TripPage() {
         ))}
       </nav>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto pb-safe">
         {activeTab === 'tickets' && <TicketsTab tripId={trip.id} />}
         {activeTab === 'itinerary' && <ItineraryTab trip={trip} />}
-        {activeTab === 'expenses' && trip.settings.showExpenses && <ExpensesTab tripId={trip.id} />}
+        {activeTab === 'hotel' && <HotelTab tripId={trip.id} />}
+        {activeTab === 'expenses' && trip.settings.showExpenses && <ExpensesTab trip={trip} />}
         {activeTab === 'car' && trip.settings.showCar && <CarTab tripId={trip.id} />}
       </div>
 

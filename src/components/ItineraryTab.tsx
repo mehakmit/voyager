@@ -1,11 +1,40 @@
 import { useMemo } from 'react'
 import { useTickets } from '@/hooks/useTickets'
 import type { Trip } from '@/types'
-import { format, eachDayOfInterval } from 'date-fns'
-import { Plane, Train, Hotel, Bus, Ticket, Clock } from 'lucide-react'
+import { format, eachDayOfInterval, isSameDay, parse, isValid } from 'date-fns'
+import { Plane, Train, Hotel, Bus, Ticket, Car, Clock } from 'lucide-react'
+import type { TicketType } from '@/types'
 
-const TYPE_ICONS = {
-  flight: Plane, train: Train, hotel: Hotel, bus: Bus, ferry: Ticket, other: Ticket,
+const TYPE_ICONS: Record<TicketType, typeof Plane> = {
+  flight: Plane, train: Train, hotel: Hotel, car: Car, bus: Bus, ferry: Ticket, other: Ticket,
+}
+
+// Try to parse a date string in many formats into a JS Date
+const DATE_FORMATS = [
+  'dd MMM yy', 'dd MMM yyyy', 'd MMM yyyy', 'd MMM yy',
+  'MMM dd, yyyy', 'MMM d, yyyy', 'MMM dd yyyy', 'MMM d yyyy',
+  'dd/MM/yyyy', 'dd/MM/yy', 'd/M/yyyy', 'd/M/yy',
+  'dd-MM-yyyy', 'dd-MM-yy',
+  'yyyy-MM-dd',
+  'MM/dd/yyyy', 'M/d/yyyy',
+]
+
+function tryParseDate(str: string): Date | null {
+  const cleaned = str.trim().replace(/\./g, '')
+  for (const fmt of DATE_FORMATS) {
+    try {
+      const d = parse(cleaned, fmt, new Date())
+      if (isValid(d) && d.getFullYear() >= 2020 && d.getFullYear() <= 2035) return d
+    } catch {
+      // try next format
+    }
+  }
+  return null
+}
+
+function dateMatchesDay(dateStr: string, day: Date): boolean {
+  const parsed = tryParseDate(dateStr)
+  return parsed !== null && isSameDay(parsed, day)
 }
 
 export default function ItineraryTab({ trip }: { trip: Trip }) {
@@ -15,16 +44,20 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
     return eachDayOfInterval({ start: trip.startDate, end: trip.endDate })
   }, [trip.startDate, trip.endDate])
 
-  // Group tickets by date
   const ticketsByDate = useMemo(() => {
     const map: Record<string, typeof tickets> = {}
+
     for (const ticket of tickets) {
       const data = { ...ticket.parsed, ...ticket.manualOverrides }
-      if (!data.date) continue
-      // Try to match the date string to one of the trip days
+      // Collect all date strings from this ticket to try
+      const datesToTry: string[] = []
+      if (data.date) datesToTry.push(data.date)
+      if (data.allDates) datesToTry.push(...data.allDates)
+
       for (const day of days) {
         const dayStr = format(day, 'yyyy-MM-dd')
-        if (data.date.includes(format(day, 'yyyy')) || data.date.includes(format(day, 'MM')) || data.date.includes(format(day, 'dd'))) {
+        const matches = datesToTry.some(d => dateMatchesDay(d, day))
+        if (matches) {
           if (!map[dayStr]) map[dayStr] = []
           if (!map[dayStr].find(t => t.id === ticket.id)) {
             map[dayStr].push(ticket)
@@ -64,11 +97,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white capitalize">{data.type}</p>
                       {data.flightNumber && (
-                        <p className="text-xs text-slate-400">{data.flightNumber} · {data.origin} → {data.destination}</p>
+                        <p className="text-xs text-slate-400">
+                          {data.flightNumber}
+                          {data.origin && data.destination ? ` · ${data.origin} → ${data.destination}` : ''}
+                        </p>
                       )}
-                      {data.hotelName && (
-                        <p className="text-xs text-slate-400">{data.hotelName}</p>
-                      )}
+                      {data.hotelName && <p className="text-xs text-slate-400">{data.hotelName}</p>}
+                      {data.rentalCompany && <p className="text-xs text-slate-400">{data.rentalCompany}</p>}
                     </div>
                     {data.departureTime && (
                       <div className="flex items-center gap-1 text-slate-400 text-xs shrink-0">

@@ -51,7 +51,7 @@ export function useTrips(uid: string | undefined) {
         },
       },
       ownerId: data.user.uid,
-      settings: { showCar: false, showExpenses: false },
+      settings: { showCar: false, showExpenses: false, baseCurrency: 'GBP' },
       createdAt: Date.now(),
       inviteToken,
     }

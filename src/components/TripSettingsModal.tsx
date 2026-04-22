@@ -4,6 +4,8 @@ import { db } from '@/lib/firebase'
 import { X, Copy, Check } from 'lucide-react'
 import type { Trip, TripMember } from '@/types'
 
+const COMMON_CURRENCIES = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK']
+
 export default function TripSettingsModal({ trip, onClose }: { trip: Trip; onClose: () => void }) {
   const [settings, setSettings] = useState(trip.settings)
   const [copied, setCopied] = useState(false)
@@ -56,7 +58,27 @@ export default function TripSettingsModal({ trip, onClose }: { trip: Trip; onClo
           </div>
         </div>
 
-        {/* Tabs toggle */}
+        {/* Base currency */}
+        <div>
+          <p className="text-xs font-medium text-slate-400 mb-2">Base currency for balances</p>
+          <div className="flex flex-wrap gap-2">
+            {COMMON_CURRENCIES.map(c => (
+              <button
+                key={c}
+                onClick={() => setSettings(s => ({ ...s, baseCurrency: c }))}
+                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                  settings.baseCurrency === c
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Optional tabs */}
         <div>
           <p className="text-xs font-medium text-slate-400 mb-2">Optional tabs</p>
           <div className="space-y-2">

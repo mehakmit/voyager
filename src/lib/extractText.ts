@@ -1,22 +1,29 @@
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
+import { getDocument, PDFWorker } from 'pdfjs-dist'
 import { createWorker } from 'tesseract.js'
 
-// Fixed URL — file copied to public/ so it never gets a new content hash.
-// A hashed URL changes every build, requiring the service worker to re-download
-// and cache it before the first upload can succeed. A fixed URL is cached once
-// and stays valid across all future deployments (only changes when pdfjs-dist
-// version bumps).
-GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+// Run pdfjs in the main thread via MessageChannel instead of a real Worker thread.
+// This avoids ALL module-worker issues (iOS Safari bugs, service-worker interception,
+// MIME-type quirks) at the cost of briefly blocking the UI during parsing — acceptable
+// for the small PDFs (< 200 KB) that travel e-tickets typically are.
+let inlineWorker: PDFWorker | null = null
+
+async function getInlinePdfWorker(): Promise<PDFWorker> {
+  if (inlineWorker) return inlineWorker
+  // Dynamic import so the 1.2 MB worker code is only fetched on first PDF upload
+  // @ts-ignore — pdfjs worker module types are not exposed in the main package typings
+  const { WorkerMessageHandler } = await import('pdfjs-dist/build/pdf.worker.min.mjs')
+  const { port1, port2 } = new MessageChannel()
+  port1.start()
+  port2.start()
+  WorkerMessageHandler.setup({ verbosity: 0 }, port1)
+  inlineWorker = new PDFWorker({ port: port2 as any })
+  return inlineWorker
+}
 
 export async function extractTextFromPDF(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer()
-  const loadTask = getDocument({ data: arrayBuffer })
-  const pdf = await Promise.race([
-    loadTask.promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => { loadTask.destroy(); reject(new Error('PDF worker timed out')) }, 12000)
-    ),
-  ])
+  const worker = await getInlinePdfWorker()
+  const pdf = await getDocument({ data: arrayBuffer, worker }).promise
   const pages: string[] = []
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)

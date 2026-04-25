@@ -146,20 +146,30 @@ function parseSection(section: string, fullText: string): ParsedTicketData {
 
   // ── Times + route (combined for formats that label both together) ──
 
-  // Priority 0: "DEPARTING LHR 09:25" / "ARRIVING SIN 05:45" (Singapore Airlines).
-  // Captures airport code AND time in one match — immune to pdfjs column-ordering.
+  // Priority 0: Singapore Airlines format — "DEPARTING/ARRIVING" label followed by
+  // IATA code + time. Uses a flexible window so pdfjs ordering doesn't matter.
   let depTime: string | undefined
   let arrTime: string | undefined
-  const depFull = section.match(/\bDEPARTING\s+([A-Z]{3})\s+(\d{1,2}:\d{2})\b/)
-  const arrFull = section.match(/\bARRIVING\s+([A-Z]{3})\s+(\d{1,2}:\d{2})\b/)
-  if (depFull && !IATA_STOPWORDS.has(depFull[1])) {
-    result.origin = depFull[1]
-    depTime = depFull[2]
+
+  function extractAfterLabel(label: string) {
+    // Capture up to 150 chars after the label, stopping before the other label or STATUS
+    const m = section.match(
+      new RegExp(`\\b${label}\\b([\\s\\S]{0,150}?)(?=\\b(?:ARRIVING|DEPARTING|STATUS)\\b|$)`, 'i')
+    )
+    if (!m) return null
+    const near = m[1]
+    let code: string | undefined
+    for (const c of near.matchAll(/\b([A-Z]{3})\b/g)) {
+      if (!IATA_STOPWORDS.has(c[1])) { code = c[1]; break }
+    }
+    const time = near.match(/\b(\d{1,2}:\d{2})\b/)?.[1]
+    return code ? { code, time } : null
   }
-  if (arrFull && !IATA_STOPWORDS.has(arrFull[1])) {
-    result.destination = arrFull[1]
-    arrTime = arrFull[2]
-  }
+
+  const depInfo = extractAfterLabel('DEPARTING')
+  const arrInfo = extractAfterLabel('ARRIVING')
+  if (depInfo) { result.origin = depInfo.code!; if (depInfo.time) depTime = depInfo.time }
+  if (arrInfo) { result.destination = arrInfo.code!; if (arrInfo.time) arrTime = arrInfo.time }
 
   // Strip footer and date strings before further time searches.
   const footerIdx = section.search(/\bPowered\s+by\b|\bE\s*[&]\s*OE\b/i)

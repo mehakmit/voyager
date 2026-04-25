@@ -146,30 +146,45 @@ function parseSection(section: string, fullText: string): ParsedTicketData {
 
   // ── Times + route (combined for formats that label both together) ──
 
-  // Priority 0: Singapore Airlines format — "DEPARTING/ARRIVING" label followed by
-  // IATA code + time. Uses a flexible window so pdfjs ordering doesn't matter.
+  // Priority 0a: Singapore Airlines format — pdfjs groups column headers together:
+  //   "DEPARTING   ARRIVING   STATUS :   CONFIRMED"
+  // followed on the next "line" by:
+  //   "LHR 09:25   SIN 05:45"
+  // Extract both dep and arr together from the window after CONFIRMED.
   let depTime: string | undefined
   let arrTime: string | undefined
 
-  function extractAfterLabel(label: string) {
-    // Capture up to 150 chars after the label, stopping before the other label or STATUS
-    const m = section.match(
-      new RegExp(`\\b${label}\\b([\\s\\S]{0,150}?)(?=\\b(?:ARRIVING|DEPARTING|STATUS)\\b|$)`, 'i')
-    )
-    if (!m) return null
-    const near = m[1]
-    let code: string | undefined
-    for (const c of near.matchAll(/\b([A-Z]{3})\b/g)) {
-      if (!IATA_STOPWORDS.has(c[1])) { code = c[1]; break }
-    }
-    const time = near.match(/\b(\d{1,2}:\d{2})\b/)?.[1]
-    return code ? { code, time } : null
+  const sgConfirmed = section.match(
+    /DEPARTING\s+ARRIVING\s+STATUS\s*:\s*CONFIRMED([\s\S]{0,100}?)(?=Singapore Airlines|[A-Z][a-z]|$)/i
+  )
+  if (sgConfirmed) {
+    const near = sgConfirmed[1]
+    const codes = [...near.matchAll(/\b([A-Z]{3})\b/g)].map(m => m[1]).filter(c => !IATA_STOPWORDS.has(c))
+    const times = [...near.matchAll(/\b(\d{1,2}:\d{2})\b/g)].map(m => m[1])
+    if (codes[0]) { result.origin = codes[0]; if (times[0]) depTime = times[0] }
+    if (codes[1]) { result.destination = codes[1]; if (times[1]) arrTime = times[1] }
   }
 
-  const depInfo = extractAfterLabel('DEPARTING')
-  const arrInfo = extractAfterLabel('ARRIVING')
-  if (depInfo) { result.origin = depInfo.code!; if (depInfo.time) depTime = depInfo.time }
-  if (arrInfo) { result.destination = arrInfo.code!; if (arrInfo.time) arrTime = arrInfo.time }
+  // Priority 0b: "DEPARTING LHR 09:25" / "ARRIVING SIN 05:45" — code and time near the label
+  if (!result.origin || !result.destination) {
+    function extractAfterLabel(label: string) {
+      const m = section.match(
+        new RegExp(`\\b${label}\\b([\\s\\S]{0,150}?)(?=\\b(?:ARRIVING|DEPARTING|STATUS)\\b|$)`, 'i')
+      )
+      if (!m) return null
+      const near = m[1]
+      let code: string | undefined
+      for (const c of near.matchAll(/\b([A-Z]{3})\b/g)) {
+        if (!IATA_STOPWORDS.has(c[1])) { code = c[1]; break }
+      }
+      const time = near.match(/\b(\d{1,2}:\d{2})\b/)?.[1]
+      return code ? { code, time } : null
+    }
+    const depInfo = extractAfterLabel('DEPARTING')
+    const arrInfo = extractAfterLabel('ARRIVING')
+    if (depInfo && !result.origin) { result.origin = depInfo.code!; if (depInfo.time && !depTime) depTime = depInfo.time }
+    if (arrInfo && !result.destination) { result.destination = arrInfo.code!; if (arrInfo.time && !arrTime) arrTime = arrInfo.time }
+  }
 
   // Strip footer and date strings before further time searches.
   const footerIdx = section.search(/\bPowered\s+by\b|\bE\s*[&]\s*OE\b/i)
@@ -304,20 +319,29 @@ function parseSection(section: string, fullText: string): ParsedTicketData {
   return result
 }
 
+function trimSection(s: string): string {
+  const cut = s.search(/\b(?:Payment details|Summary of fare|Contact us|Terms and Conditions)\b/i)
+  return cut > 200 ? s.slice(0, cut) : s
+}
+
 function splitFlightSections(text: string): string[] {
+  // Singapore Airlines (and similar): pdfjs extracts column headers as one group —
+  // "DEPARTING   ARRIVING   STATUS :   CONFIRMED" — appearing once per flight.
+  // Split there since the numbered headers (1. SQ305 ·) end up at the bottom of the page.
+  let parts = text.split(/(?=DEPARTING\s+ARRIVING\s+STATUS)/i)
+    .filter(s => /DEPARTING/i.test(s) && s.trim().length > 50)
+    .map(trimSection)
+  if (parts.length > 1) return parts
+
   // Split on day-of-week date headers (PenGuin/TravelUp format)
-  let parts = text.split(/(?=(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\d{1,2}\s+\w+\s+\d{4})/i)
+  parts = text.split(/(?=(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+\d{1,2}\s+\w+\s+\d{4})/i)
     .filter(s => /flight/i.test(s) && s.trim().length > 100)
   if (parts.length > 1) return parts
 
-  // Split on numbered flight headers e.g. "1. SQ305 · London to Singapore" (Singapore Airlines)
+  // Split on numbered flight headers e.g. "1. SQ305 · London to Singapore"
   parts = text.split(/(?=\d+\.\s+[A-Z]{2}\d{3,4}\s*[·•\-])/)
     .filter(s => /flight|departing|arriving/i.test(s) && s.trim().length > 100)
-    .map(s => {
-      // Trim at page-2+ content so fare tables / payment pages don't pollute time/route parsing
-      const cut = s.search(/\b(?:Payment details|Summary of fare|Contact us|Terms and Conditions)\b/i)
-      return cut > 200 ? s.slice(0, cut) : s
-    })
+    .map(trimSection)
   if (parts.length > 1) return parts
 
   // Fallback: split on "Airline Booking Ref" repetitions (PenGuin format)

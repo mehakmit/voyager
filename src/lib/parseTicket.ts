@@ -146,23 +146,20 @@ function parseSection(section: string, fullText: string): ParsedTicketData {
 
   // ── Times + route (combined for formats that label both together) ──
 
-  // Priority 0a: Singapore Airlines format — pdfjs groups column headers together:
+  // Priority 0a: Singapore Airlines format — pdfjs groups column headers as one block:
   //   "DEPARTING   ARRIVING   STATUS :   CONFIRMED"
-  // followed on the next "line" by:
-  //   "LHR 09:25   SIN 05:45"
-  // Extract both dep and arr together from the window after CONFIRMED.
+  // followed by adjacent CODE TIME pairs: "LHR 09:25   SIN 05:45"
+  // Scan the whole section for "CODE HH:MM" pairs — simpler and immune to lookahead issues.
   let depTime: string | undefined
   let arrTime: string | undefined
 
-  const sgConfirmed = section.match(
-    /DEPARTING\s+ARRIVING\s+STATUS\s*:\s*CONFIRMED([\s\S]{0,100}?)(?=Singapore Airlines|[A-Z][a-z]|$)/i
-  )
-  if (sgConfirmed) {
-    const near = sgConfirmed[1]
-    const codes = [...near.matchAll(/\b([A-Z]{3})\b/g)].map(m => m[1]).filter(c => !IATA_STOPWORDS.has(c))
-    const times = [...near.matchAll(/\b(\d{1,2}:\d{2})\b/g)].map(m => m[1])
-    if (codes[0]) { result.origin = codes[0]; if (times[0]) depTime = times[0] }
-    if (codes[1]) { result.destination = codes[1]; if (times[1]) arrTime = times[1] }
+  if (/\bDEPARTING\s+ARRIVING\s+STATUS\b/i.test(section)) {
+    const codeTimePairs: { code: string; time: string }[] = []
+    for (const m of section.matchAll(/\b([A-Z]{3})\s+(\d{1,2}:\d{2})\b/g)) {
+      if (!IATA_STOPWORDS.has(m[1])) codeTimePairs.push({ code: m[1], time: m[2] })
+    }
+    if (codeTimePairs[0]) { result.origin = codeTimePairs[0].code; depTime = codeTimePairs[0].time }
+    if (codeTimePairs[1]) { result.destination = codeTimePairs[1].code; arrTime = codeTimePairs[1].time }
   }
 
   // Priority 0b: "DEPARTING LHR 09:25" / "ARRIVING SIN 05:45" — code and time near the label

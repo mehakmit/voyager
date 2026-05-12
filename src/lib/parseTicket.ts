@@ -292,14 +292,58 @@ function parseSection(section: string, fullText: string): ParsedTicketData {
 
   // ── Hotel ──
   if (type === 'hotel') {
-    const hotelMatch = section.match(/(?:hotel\s+([^\n,]{3,40})|([^\n,]{3,40})\s+hotel)/i)
-    if (hotelMatch) result.hotelName = (hotelMatch[1] ?? hotelMatch[2])?.trim()
-    const checkInMatch = section.match(/\bcheck[- ]?in[:\s]+(.{5,25})/i)
-    if (checkInMatch) result.checkIn = checkInMatch[1].trim()
-    const checkOutMatch = section.match(/\bcheck[- ]?out[:\s]+(.{5,25})/i)
-    if (checkOutMatch) result.checkOut = checkOutMatch[1].trim()
-    const roomMatch = section.match(/\broom\s*(?:type)?[:\s]+([^\n,]{3,30})/i)
-    if (roomMatch) result.roomType = roomMatch[1].trim()
+    const hotelByAddr = section.match(/\b\d{6,}\b\s+([^.]{5,70}?)\s{2,}Address\s*:/i)
+    if (hotelByAddr) {
+      result.hotelName = hotelByAddr[1].trim()
+    } else {
+      const hotelMatch = section.match(/(?:\bhotel\s+(?!['']s\b)([^\n,]{3,40})|([^\n,]{3,40})\s+hotel(?!\s*['']s\b))/i)
+      if (hotelMatch) result.hotelName = (hotelMatch[1] ?? hotelMatch[2])?.trim()
+    }
+
+    const checkInFull = section.match(/\bcheck[- ]?in\s+([A-Z]\w+\s+\d{1,2},?\s*\d{4})\s+\w+\s+((?:after|before)\s+\d{1,2}:\d{2})/i)
+    const checkInDate = !checkInFull ? section.match(/\bcheck[- ]?in\s+([A-Z]\w+\s+\d{1,2},?\s*\d{4})/i) : null
+    if (checkInFull) result.checkIn = `${checkInFull[1]} ${checkInFull[2]}`
+    else if (checkInDate) result.checkIn = checkInDate[1].trim()
+
+    const checkOutFull = section.match(/\bcheck[- ]?out\s+([A-Z]\w+\s+\d{1,2},?\s*\d{4})\s+\w+\s+((?:after|before)\s+\d{1,2}:\d{2})/i)
+    const checkOutDate = !checkOutFull ? section.match(/\bcheck[- ]?out\s+([A-Z]\w+\s+\d{1,2},?\s*\d{4})/i) : null
+    if (checkOutFull) result.checkOut = `${checkOutFull[1]} ${checkOutFull[2]}`
+    else if (checkOutDate) result.checkOut = checkOutDate[1].trim()
+
+    const roomTypeMatch = section.match(/([A-Za-z][\w\s]{4,50}(?:Room|Suite|Studio|Villa|Cabin|Apartment|Chalet))\s+Guest\s*names?\b/i)
+    if (roomTypeMatch) {
+      result.roomType = roomTypeMatch[1].trim()
+    } else {
+      const roomInfoMatch = section.match(/\broom\s+info[:\s]+([^\n,]{3,40})/i)
+      if (roomInfoMatch) result.roomType = roomInfoMatch[1].trim()
+      else {
+        const roomMatch = section.match(/\broom\s*(?:type)?[:\s]+([^\n,]{3,30})/i)
+        if (roomMatch) result.roomType = roomMatch[1].trim()
+      }
+    }
+
+    if (!result.passengerName) {
+      const guestStart = section.match(/\bguest\s+names?\s{1,3}(\S[^\n]*)/i)
+      if (guestStart) {
+        const nameOnly = guestStart[1].split(/\s{2,}/)[0].trim()
+        if (/^[A-Z ]+$/i.test(nameOnly) && nameOnly.length >= 3 && nameOnly.length <= 40) {
+          result.passengerName = nameOnly
+        }
+      }
+    }
+
+    if (!result.bookingRef) {
+      const bookingNoMatch = section.match(/\bBooking\s+No[.:]?\s*[:\s]+(\w{5,20})\b/i)
+      if (bookingNoMatch) result.bookingRef = bookingNoMatch[1]
+    }
+
+    if (!result.date && result.checkIn) {
+      const d = result.checkIn.match(/[A-Z]\w+\s+\d{1,2},?\s*\d{4}/i)
+      if (d) result.date = d[0]
+    }
+
+    delete result.departureTime
+    delete result.arrivalTime
   }
 
   // ── Car ──

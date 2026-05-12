@@ -2,16 +2,19 @@ import { useState } from 'react'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 
 const provider = new GoogleAuthProvider()
 
 export default function AuthPage() {
   const { user } = useAuth()
+  const location = useLocation()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  if (user) return <Navigate to="/" replace />
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
+
+  if (user) return <Navigate to={from} replace />
 
   async function signInWithGoogle() {
     setError('')

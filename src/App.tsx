@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import AuthPage from '@/pages/AuthPage'
 import TripsPage from '@/pages/TripsPage'
@@ -7,8 +7,9 @@ import JoinPage from '@/pages/JoinPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
   if (loading) return <div className="min-h-screen bg-slate-950" />
-  if (!user) return <Navigate to="/auth" replace />
+  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />
   return <>{children}</>
 }
 

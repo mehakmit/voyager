@@ -24,9 +24,11 @@ export function useTickets(tripId: string | undefined) {
     })
   }, [tripId])
 
-  async function uploadTicket(file: File, uploadedBy: string): Promise<string[]> {
-    // Text extraction can fail on some mobile browsers (pdfjs worker issues).
-    // We still store the ticket so the user can view the original file.
+  async function uploadTicket(
+    file: File,
+    uploadedBy: string,
+    members: { uid: string; displayName: string | null; email: string }[] = [],
+  ): Promise<string[]> {
     let rawText = ''
     try {
       rawText = await extractText(file)
@@ -36,14 +38,20 @@ export function useTickets(tripId: string | undefined) {
     const parsedList = parseAllTickets(rawText)
     const ids: string[] = []
 
-    // Store file locally and remotely — both are best-effort and must never
-    // block the upload (IndexedDB is blocked in iOS private browsing).
     const localFileKey = nanoid()
     storeFile(localFileKey, file).catch(() => {})
     storeFileRemote(localFileKey, file)
 
     for (const parsed of parsedList) {
       const id = nanoid()
+
+      let assignedMemberUid: string | undefined
+      if (parsed.type === 'hotel' || parsed.type === 'car') {
+        assignedMemberUid = 'all'
+      } else if (parsed.passengerName && members.length > 0) {
+        assignedMemberUid = matchMemberByName(parsed.passengerName, members) ?? undefined
+      }
+
       await setDoc(doc(db, 'tickets', id), {
         tripId: tripId!,
         uploadedBy,
@@ -52,11 +60,11 @@ export function useTickets(tripId: string | undefined) {
         fileType: file.type,
         localFileKey,
         parsed,
+        ...(assignedMemberUid !== undefined && { assignedMemberUid }),
       })
       ids.push(id)
     }
 
-    // Also try Firebase Storage in the background (optional, needs Storage rules)
     const storageKey = `trips/${tripId}/tickets/${nanoid()}_${file.name}`
     uploadBytes(ref(storage, storageKey), file)
       .then(snap => getDownloadURL(snap.ref))
@@ -64,6 +72,20 @@ export function useTickets(tripId: string | undefined) {
       .catch(() => {})
 
     return ids
+  }
+
+  function matchMemberByName(
+    name: string,
+    members: { uid: string; displayName: string | null }[],
+  ): string | null {
+    const words = name.toLowerCase().split(/\s+/).filter(w => w.length > 1)
+    for (const m of members) {
+      if (!m.displayName) continue
+      const mName = m.displayName.toLowerCase()
+      const matched = words.filter(w => mName.includes(w)).length
+      if (matched >= Math.min(2, words.length)) return m.uid
+    }
+    return null
   }
 
   async function updateTicket(ticketId: string, overrides: Partial<ParsedTicketData>) {

@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useTickets } from '@/hooks/useTickets'
 import type { Trip } from '@/types'
-import { format, eachDayOfInterval, isSameDay, parse, isValid } from 'date-fns'
+import { format, eachDayOfInterval, isSameDay } from 'date-fns'
+import { tryParseDate } from '@/lib/parseDate'
 import { Plane, Train, Hotel, Bus, Ticket, Car, Clock } from 'lucide-react'
 import type { TicketType } from '@/types'
 
@@ -9,28 +10,6 @@ const TYPE_ICONS: Record<TicketType, typeof Plane> = {
   flight: Plane, train: Train, hotel: Hotel, car: Car, bus: Bus, ferry: Ticket, other: Ticket,
 }
 
-// Try to parse a date string in many formats into a JS Date
-const DATE_FORMATS = [
-  'dd MMM yy', 'dd MMM yyyy', 'd MMM yyyy', 'd MMM yy',
-  'MMM dd, yyyy', 'MMM d, yyyy', 'MMM dd yyyy', 'MMM d yyyy',
-  'dd/MM/yyyy', 'dd/MM/yy', 'd/M/yyyy', 'd/M/yy',
-  'dd-MM-yyyy', 'dd-MM-yy',
-  'yyyy-MM-dd',
-  'MM/dd/yyyy', 'M/d/yyyy',
-]
-
-function tryParseDate(str: string): Date | null {
-  const cleaned = str.trim().replace(/\./g, '')
-  for (const fmt of DATE_FORMATS) {
-    try {
-      const d = parse(cleaned, fmt, new Date())
-      if (isValid(d) && d.getFullYear() >= 2020 && d.getFullYear() <= 2035) return d
-    } catch {
-      // try next format
-    }
-  }
-  return null
-}
 
 function dateMatchesDay(dateStr: string, day: Date): boolean {
   const parsed = tryParseDate(dateStr)

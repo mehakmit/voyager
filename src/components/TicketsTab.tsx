@@ -4,6 +4,7 @@ import { useTickets } from '@/hooks/useTickets'
 import { useAuth } from '@/hooks/useAuth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { tryParseDate } from '@/lib/parseDate'
 import {
   Upload, Plane, Train, Hotel, Bus, Ticket, Car, Trash2, Loader2,
   User, X, ExternalLink, FileText,
@@ -31,6 +32,8 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
     return unsub
   })
 
+  const members = trip ? Object.values(trip.memberDetails) : []
+
   const onDrop = useCallback(async (files: File[]) => {
     if (!user) return
     setUploading(true)
@@ -38,7 +41,7 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
     setUploadError(null)
     try {
       for (const file of files) {
-        const ids = await uploadTicket(file, user.uid)
+        const ids = await uploadTicket(file, user.uid, members)
         setUploadCount(prev => prev + ids.length)
       }
     } catch (err) {
@@ -48,7 +51,7 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
     } finally {
       setUploading(false)
     }
-  }, [user, uploadTicket])
+  }, [user, uploadTicket, members])
 
   // noClick: true — we use a native <label>+<input> for the tap target instead.
   // Programmatic input.click() from react-dropzone is blocked by iOS Safari;
@@ -60,8 +63,6 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
     accept: { 'application/pdf': ['.pdf'], 'image/*': [] },
     multiple: true,
   })
-
-  const members = trip ? Object.values(trip.memberDetails) : []
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
@@ -106,7 +107,14 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
 
       <div className="space-y-3">
         {tickets
-          .sort((a, b) => b.uploadedAt - a.uploadedAt)
+          .slice()
+          .sort((a, b) => {
+            const aData = { ...a.parsed, ...a.manualOverrides }
+            const bData = { ...b.parsed, ...b.manualOverrides }
+            const aDate = aData.date ? (tryParseDate(aData.date)?.getTime() ?? a.uploadedAt) : a.uploadedAt
+            const bDate = bData.date ? (tryParseDate(bData.date)?.getTime() ?? b.uploadedAt) : b.uploadedAt
+            return aDate - bDate
+          })
           .map(ticket => (
             <TicketCard
               key={ticket.id}
@@ -168,7 +176,7 @@ function TicketCard({ ticket, members, onOpen, onDelete, onAssign }: CardProps) 
               {data.origin && data.destination && (
                 <Field label="Route" value={`${data.origin} → ${data.destination}`} />
               )}
-              {data.date && <Field label="Date" value={data.date} />}
+              {data.date && !data.checkIn && <Field label="Date" value={data.date} />}
               {data.departureTime && <Field label="Departs" value={data.departureTime} />}
               {data.arrivalTime && <Field label="Arrives" value={data.arrivalTime} />}
               {data.flightNumber && <Field label="Flight" value={data.flightNumber} />}
@@ -192,6 +200,7 @@ function TicketCard({ ticket, members, onOpen, onDelete, onAssign }: CardProps) 
               className="flex-1 bg-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option value="">Assign to...</option>
+              <option value="all">Everyone</option>
               {members.map(m => (
                 <option key={m.uid} value={m.uid}>{m.displayName ?? m.email}</option>
               ))}

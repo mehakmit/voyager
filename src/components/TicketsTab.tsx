@@ -385,9 +385,9 @@ function TicketModal({ ticket, members, onClose, onDelete, onAssign }: ModalProp
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <span className="text-slate-500 text-xs">{label}: </span>
-      <span className="text-slate-200 text-xs">{value}</span>
+      <span className="text-slate-200 text-xs break-all">{value}</span>
     </div>
   )
 }

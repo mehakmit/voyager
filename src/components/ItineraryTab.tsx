@@ -45,22 +45,35 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   }, [trip.startDate, trip.endDate])
 
   const ticketsByDate = useMemo(() => {
-    const map: Record<string, typeof tickets> = {}
+    const map: Record<string, { ticket: (typeof tickets)[number]; checkout: boolean }[]> = {}
+
+    function addToDay(day: Date, ticket: (typeof tickets)[number], checkout: boolean) {
+      const dayStr = format(day, 'yyyy-MM-dd')
+      if (!map[dayStr]) map[dayStr] = []
+      if (!map[dayStr].find(e => e.ticket.id === ticket.id && e.checkout === checkout)) {
+        map[dayStr].push({ ticket, checkout })
+      }
+    }
 
     for (const ticket of tickets) {
       const data = { ...ticket.parsed, ...ticket.manualOverrides }
-      // Collect all date strings from this ticket to try
       const datesToTry: string[] = []
       if (data.date) datesToTry.push(data.date)
       if (data.allDates) datesToTry.push(...data.allDates)
 
       for (const day of days) {
-        const dayStr = format(day, 'yyyy-MM-dd')
-        const matches = datesToTry.some(d => dateMatchesDay(d, day))
-        if (matches) {
-          if (!map[dayStr]) map[dayStr] = []
-          if (!map[dayStr].find(t => t.id === ticket.id)) {
-            map[dayStr].push(ticket)
+        if (datesToTry.some(d => dateMatchesDay(d, day))) {
+          addToDay(day, ticket, false)
+        }
+      }
+
+      if (data.type === 'hotel' && data.checkOut) {
+        const checkOutDateStr = data.checkOut.match(/[A-Z]\w+\s+\d{1,2},?\s*\d{4}/i)?.[0]
+        if (checkOutDateStr) {
+          for (const day of days) {
+            if (dateMatchesDay(checkOutDateStr, day)) {
+              addToDay(day, ticket, true)
+            }
           }
         }
       }
@@ -88,27 +101,33 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               {dayTickets.length === 0 && (
                 <p className="text-slate-600 text-xs px-4 py-3">No events</p>
               )}
-              {dayTickets.map(ticket => {
+              {dayTickets.map(({ ticket, checkout }) => {
                 const data = { ...ticket.parsed, ...ticket.manualOverrides }
                 const Icon = TYPE_ICONS[data.type] ?? Ticket
+
+                let subtitle = ''
+                let time: string | undefined
+                if (data.type === 'hotel') {
+                  subtitle = (checkout ? 'Check-out' : 'Check-in') + (data.hotelName ? ` · ${data.hotelName}` : '')
+                  time = (checkout ? data.checkOut : data.checkIn)?.match(/\b\d{1,2}:\d{2}\b/)?.[0]
+                } else {
+                  if (data.flightNumber) subtitle = data.flightNumber + (data.origin && data.destination ? ` · ${data.origin} → ${data.destination}` : '')
+                  else if (data.hotelName) subtitle = data.hotelName
+                  else if (data.rentalCompany) subtitle = data.rentalCompany
+                  time = data.departureTime
+                }
+
                 return (
-                  <div key={ticket.id} className="flex items-start gap-3 px-4 py-3">
+                  <div key={`${ticket.id}-${checkout}`} className="flex items-start gap-3 px-4 py-3">
                     <Icon size={16} className="text-indigo-400 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-white capitalize">{data.type}</p>
-                      {data.flightNumber && (
-                        <p className="text-xs text-slate-400">
-                          {data.flightNumber}
-                          {data.origin && data.destination ? ` · ${data.origin} → ${data.destination}` : ''}
-                        </p>
-                      )}
-                      {data.hotelName && <p className="text-xs text-slate-400">{data.hotelName}</p>}
-                      {data.rentalCompany && <p className="text-xs text-slate-400">{data.rentalCompany}</p>}
+                      {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
                     </div>
-                    {data.departureTime && (
+                    {time && (
                       <div className="flex items-center gap-1 text-slate-400 text-xs shrink-0">
                         <Clock size={11} />
-                        {data.departureTime}
+                        {time}
                       </div>
                     )}
                   </div>

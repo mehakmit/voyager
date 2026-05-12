@@ -175,6 +175,7 @@ function TicketCard({ ticket, members, onOpen, onDelete, onAssign }: CardProps) 
               {data.bookingRef && <Field label="Ref" value={data.bookingRef} />}
               {data.hotelName && <Field label="Hotel" value={data.hotelName} />}
               {data.checkIn && <Field label="Check-in" value={data.checkIn} />}
+              {data.checkOut && <Field label="Check-out" value={data.checkOut} />}
             </div>
           </div>
           <span className="text-xs text-slate-600 shrink-0 mt-1">tap to view</span>

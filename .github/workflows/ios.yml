@@ -27,9 +27,6 @@ jobs:
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
-      - name: Install CocoaPods
-        run: cd ios/App && pod install --repo-update
-
       - name: Install Fastlane
         run: gem install fastlane --no-document
 

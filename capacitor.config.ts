@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mehak.voyager',
+  appId: 'app.voyager',
   appName: 'Voyager',
   webDir: 'dist',
   ios: {

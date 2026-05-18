@@ -2,6 +2,21 @@ default_platform(:ios)
 
 platform :ios do
   lane :beta do
+    keychain_name     = "odyssey_build"
+    keychain_password = "odyssey_ci"
+    keychain_path     = "#{ENV['HOME']}/Library/Keychains/#{keychain_name}-db"
+
+    sh "security delete-keychain '#{keychain_path}' 2>/dev/null || true"
+
+    create_keychain(
+      name:               keychain_name,
+      password:           keychain_password,
+      default_keychain:   true,
+      unlock:             true,
+      timeout:            3600,
+      add_to_search_list: true,
+    )
+
     api_key = app_store_connect_api_key(
       key_id:       ENV["ASC_KEY_ID"],
       issuer_id:    ENV["ASC_ISSUER_ID"],
@@ -10,11 +25,13 @@ platform :ios do
       in_house:     false,
     )
 
-    # generate_apple_certs:false = CSR generated locally so private key stays in the default keychain
     cert(
-      api_key:              api_key,
-      output_path:          "/tmp/certs",
-      generate_apple_certs: false,
+      api_key:                 api_key,
+      output_path:             "/tmp/certs",
+      keychain_path:           keychain_path,
+      keychain_password:       keychain_password,
+      generate_apple_certs:    false,
+      skip_set_partition_list: true,
     )
 
     sigh(
@@ -43,7 +60,7 @@ platform :ios do
       scheme:           "App",
       configuration:    "Release",
       export_method:    "app-store",
-      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N CODE_SIGN_IDENTITY='iPhone Distribution'",
+      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N CODE_SIGN_IDENTITY='iPhone Distribution' OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       export_options:   {
         teamID:               "ACLCAVPU3N",
         provisioningProfiles: {
@@ -59,5 +76,7 @@ platform :ios do
       ipa:                               "/tmp/build/Odyssey.ipa",
       skip_waiting_for_build_processing: true,
     )
+  ensure
+    sh "security delete-keychain '#{ENV['HOME']}/Library/Keychains/odyssey_build-db' 2>/dev/null || true"
   end
 end

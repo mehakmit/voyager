@@ -4,6 +4,10 @@ platform :ios do
   lane :beta do
     keychain_name     = "odyssey_build"
     keychain_password = "odyssey_ci"
+    keychain_path     = "#{ENV['HOME']}/Library/Keychains/#{keychain_name}-db"
+
+    # Always start with a fresh keychain so no stale state from previous runs
+    sh "security delete-keychain '#{keychain_path}' 2>/dev/null || true"
 
     create_keychain(
       name:               keychain_name,
@@ -22,11 +26,14 @@ platform :ios do
       in_house:     false,
     )
 
+    # generate_apple_certs:false = CSR generated locally, private key stored in OUR keychain
     cert(
-      api_key:           api_key,
-      output_path:       "/tmp/certs",
-      keychain_path:     "#{ENV['HOME']}/Library/Keychains/#{keychain_name}-db",
-      keychain_password: keychain_password,
+      api_key:              api_key,
+      output_path:          "/tmp/certs",
+      keychain_path:        keychain_path,
+      keychain_password:    keychain_password,
+      generate_apple_certs: false,
+      skip_set_partition_list: true,
     )
 
     sigh(
@@ -54,7 +61,7 @@ platform :ios do
       scheme:           "App",
       configuration:    "Release",
       export_method:    "app-store",
-      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N",
+      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       export_options:   {
         teamID:               "ACLCAVPU3N",
         provisioningProfiles: {
@@ -71,6 +78,6 @@ platform :ios do
       skip_waiting_for_build_processing: true,
     )
   ensure
-    delete_keychain(name: keychain_name) rescue nil
+    sh "security delete-keychain '#{ENV['HOME']}/Library/Keychains/odyssey_build-db' 2>/dev/null || true"
   end
 end

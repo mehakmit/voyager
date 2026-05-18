@@ -2,22 +2,6 @@ default_platform(:ios)
 
 platform :ios do
   lane :beta do
-    keychain_name     = "odyssey_build"
-    keychain_password = "odyssey_ci"
-    keychain_path     = "#{ENV['HOME']}/Library/Keychains/#{keychain_name}-db"
-
-    # Always start with a fresh keychain so no stale state from previous runs
-    sh "security delete-keychain '#{keychain_path}' 2>/dev/null || true"
-
-    create_keychain(
-      name:               keychain_name,
-      password:           keychain_password,
-      default_keychain:   true,
-      unlock:             true,
-      timeout:            3600,
-      add_to_search_list: true,
-    )
-
     api_key = app_store_connect_api_key(
       key_id:       ENV["ASC_KEY_ID"],
       issuer_id:    ENV["ASC_ISSUER_ID"],
@@ -26,47 +10,29 @@ platform :ios do
       in_house:     false,
     )
 
-    # generate_apple_certs:false = CSR generated locally, private key stored in OUR keychain
-    cert(
-      api_key:              api_key,
-      output_path:          "/tmp/certs",
-      keychain_path:        keychain_path,
-      keychain_password:    keychain_password,
-      generate_apple_certs: false,
-      skip_set_partition_list: true,
-    )
-
-    sigh(
-      api_key:        api_key,
-      app_identifier: "app.odyssey",
-      output_path:    "/tmp/profiles",
-      force:          false,
-    )
-
     increment_build_number(
       build_number: ENV["BUILD_NUMBER"] || Time.now.to_i.to_s,
       xcodeproj:    "App.xcodeproj",
     )
 
+    # Enable automatic signing so Xcode manages certs/profiles via the API key
     update_code_signing_settings(
-      use_automatic_signing: false,
+      use_automatic_signing: true,
       team_id:               "ACLCAVPU3N",
       bundle_identifier:     "app.odyssey",
       path:                  "App.xcodeproj",
-      profile_uuid:          lane_context[SharedValues::SIGH_UDID],
     )
 
     build_app(
-      project:          "App.xcodeproj",
-      scheme:           "App",
-      configuration:    "Release",
-      export_method:    "app-store",
-      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
-      export_options:   {
-        teamID:               "ACLCAVPU3N",
-        provisioningProfiles: {
-          "app.odyssey" => lane_context[SharedValues::SIGH_NAME],
-        },
+      project:       "App.xcodeproj",
+      scheme:        "App",
+      configuration: "Release",
+      export_method: "app-store",
+      xcargs:        "-allowProvisioningUpdates -authenticationKeyID #{ENV['ASC_KEY_ID']} -authenticationKeyIssuerID #{ENV['ASC_ISSUER_ID']} -authenticationKeyPath #{ENV['HOME']}/.private_keys/AuthKey_#{ENV['ASC_KEY_ID']}.p8 DEVELOPMENT_TEAM=ACLCAVPU3N",
+      export_options: {
+        teamID:       "ACLCAVPU3N",
+        method:       "app-store",
+        signingStyle: "automatic",
       },
       output_directory: "/tmp/build",
       output_name:      "Odyssey.ipa",
@@ -77,7 +43,5 @@ platform :ios do
       ipa:                               "/tmp/build/Odyssey.ipa",
       skip_waiting_for_build_processing: true,
     )
-  ensure
-    sh "security delete-keychain '#{ENV['HOME']}/Library/Keychains/odyssey_build-db' 2>/dev/null || true"
   end
 end

@@ -3,7 +3,7 @@ import { db } from '@/lib/firebase'
 
 // ── IndexedDB (same device, always fast) ────────────────────────────────────
 
-const DB_NAME = 'voyager-files'
+const DB_NAME = 'odyssey-files'
 const STORE = 'ticket-files'
 const VERSION = 1
 

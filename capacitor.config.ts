@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.voyager',
-  appName: 'Voyager',
+  appId: 'app.odyssey',
+  appName: 'Odyssey',
   webDir: 'dist',
   ios: {
     contentInset: 'automatic',

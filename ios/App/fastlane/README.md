@@ -2,7 +2,7 @@
 
 ## Required GitHub Secrets
 
-Go to github.com/mehakmit/voyager → Settings → Secrets → Actions → New secret:
+Go to github.com/mehakmit/odyssey → Settings → Secrets → Actions → New secret:
 
 | Secret | Where to get it |
 |---|---|
@@ -14,8 +14,8 @@ Go to github.com/mehakmit/voyager → Settings → Secrets → Actions → New s
 
 1. Go to appstoreconnect.apple.com → Apps → New App
 2. Platform: iOS
-3. Bundle ID: app.voyager (register it first at developer.apple.com → Identifiers)
-4. SKU: voyager
+3. Bundle ID: app.odyssey (register it first at developer.apple.com → Identifiers)
+4. SKU: odyssey
 
 ## How builds work
 

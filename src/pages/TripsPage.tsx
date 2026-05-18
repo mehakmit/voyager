@@ -24,7 +24,7 @@ export default function TripsPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="flex items-center justify-between px-5 pb-4 pt-safe">
-        <h1 className="font-display italic text-3xl text-white">Voyager</h1>
+        <h1 className="font-display italic text-3xl text-white">Odyssey</h1>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreate(true)}

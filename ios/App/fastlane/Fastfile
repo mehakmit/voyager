@@ -14,7 +14,7 @@ platform :ios do
     cert(api_key: api_key, output_path: "/tmp/certs")
     sigh(
       api_key:        api_key,
-      app_identifier: "app.voyager",
+      app_identifier: "app.odyssey",
       output_path:    "/tmp/profiles",
       force:          false,
     )
@@ -32,16 +32,16 @@ platform :ios do
       export_method:  "app-store",
       export_options: {
         provisioningProfiles: {
-          "app.voyager" => "app.voyager AppStore",
+          "app.odyssey" => "app.odyssey AppStore",
         },
       },
       output_directory: "/tmp/build",
-      output_name:      "Voyager.ipa",
+      output_name:      "Odyssey.ipa",
     )
 
     upload_to_testflight(
       api_key:                            api_key,
-      ipa:                                "/tmp/build/Voyager.ipa",
+      ipa:                                "/tmp/build/Odyssey.ipa",
       skip_waiting_for_build_processing:  true,
       changelog:                          "Latest build from main branch",
     )

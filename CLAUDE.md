@@ -16,7 +16,7 @@ Copy `.env.example` to `.env` and fill in Firebase project credentials before ru
 
 ## Architecture
 
-**Voyager** is an offline-first trip planning PWA. The key architectural decisions:
+**Odyssey** is an offline-first trip planning PWA. The key architectural decisions:
 
 - **Local-first via Firebase offline persistence** — Firestore's `enableIndexedDbPersistence` is enabled in `src/lib/firebase.ts`. Data is cached in IndexedDB; reads/writes work offline and sync when connectivity returns.
 - **PWA via `vite-plugin-pwa`** — service worker precaches all assets. Install with `--legacy-peer-deps` because vite-plugin-pwa hasn't yet declared support for Vite 8.

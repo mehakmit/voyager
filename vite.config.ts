@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Voyager',
-        short_name: 'Voyager',
+        name: 'Odyssey',
+        short_name: 'Odyssey',
         description: 'Trip planning for groups',
         theme_color: '#0f172a',
         background_color: '#0f172a',

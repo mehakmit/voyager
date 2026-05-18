@@ -2,15 +2,33 @@ default_platform(:ios)
 
 platform :ios do
   lane :beta do
-    api_key = app_store_connect_api_key(
-      key_id:        ENV["ASC_KEY_ID"],
-      issuer_id:     ENV["ASC_ISSUER_ID"],
-      key_filepath:  "#{ENV['HOME']}/.private_keys/AuthKey_#{ENV['ASC_KEY_ID']}.p8",
-      duration:      1200,
-      in_house:      false,
+    keychain_name     = "odyssey_build"
+    keychain_password = "odyssey_ci"
+
+    create_keychain(
+      name:               keychain_name,
+      password:           keychain_password,
+      default_keychain:   true,
+      unlock:             true,
+      timeout:            3600,
+      add_to_search_list: true,
     )
 
-    cert(api_key: api_key, output_path: "/tmp/certs")
+    api_key = app_store_connect_api_key(
+      key_id:       ENV["ASC_KEY_ID"],
+      issuer_id:    ENV["ASC_ISSUER_ID"],
+      key_filepath: "#{ENV['HOME']}/.private_keys/AuthKey_#{ENV['ASC_KEY_ID']}.p8",
+      duration:     1200,
+      in_house:     false,
+    )
+
+    cert(
+      api_key:           api_key,
+      output_path:       "/tmp/certs",
+      keychain_path:     "#{ENV['HOME']}/Library/Keychains/#{keychain_name}-db",
+      keychain_password: keychain_password,
+    )
+
     sigh(
       api_key:        api_key,
       app_identifier: "app.odyssey",
@@ -32,15 +50,15 @@ platform :ios do
     )
 
     build_app(
-      project:        "App.xcodeproj",
-      scheme:         "App",
-      configuration:  "Release",
-      export_method:  "app-store",
-      xcargs:         "DEVELOPMENT_TEAM=ACLCAVPU3N",
-      export_options: {
+      project:          "App.xcodeproj",
+      scheme:           "App",
+      configuration:    "Release",
+      export_method:    "app-store",
+      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N",
+      export_options:   {
         teamID:               "ACLCAVPU3N",
         provisioningProfiles: {
-          "app.odyssey" => "app.odyssey AppStore",
+          "app.odyssey" => lane_context[SharedValues::SIGH_NAME],
         },
       },
       output_directory: "/tmp/build",
@@ -52,5 +70,7 @@ platform :ios do
       ipa:                               "/tmp/build/Odyssey.ipa",
       skip_waiting_for_build_processing: true,
     )
+  ensure
+    delete_keychain(name: keychain_name) rescue nil
   end
 end

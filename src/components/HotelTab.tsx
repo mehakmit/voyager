@@ -126,11 +126,15 @@ export default function HotelTab({ tripId }: { tripId: string }) {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 px-4 pb-5">
-                  <button className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold text-white"
+                  <button
+                    onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(data.hotelName ?? '')}`, '_blank')}
+                    className="flex-1 h-11 rounded-2xl flex items-center justify-center gap-2 text-sm font-semibold text-white"
                     style={{ background: '#e76a55' }}>
                     <MapPin size={14} /> Directions
                   </button>
-                  <button className="flex-1 h-11 rounded-2xl flex items-center justify-center text-sm font-semibold text-white"
+                  <button
+                    onClick={() => window.open(`https://www.google.com/search?q=${encodeURIComponent((data.hotelName ?? '') + ' contact phone')}`, '_blank')}
+                    className="flex-1 h-11 rounded-2xl flex items-center justify-center text-sm font-semibold text-white"
                     style={{ border: '1px solid rgba(255,255,255,0.12)' }}>
                     Contact host
                   </button>

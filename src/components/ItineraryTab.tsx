@@ -1,13 +1,27 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTickets } from '@/hooks/useTickets'
-import type { Trip } from '@/types'
+import type { Trip, TicketType } from '@/types'
 import { format, eachDayOfInterval, isSameDay } from 'date-fns'
 import { Plane, Train, Hotel, Bus, Ticket, Car, Clock } from 'lucide-react'
-import type { TicketType } from '@/types'
 import { tryParseDate } from '@/lib/parseDate'
 
 const TYPE_ICONS: Record<TicketType, typeof Plane> = {
   flight: Plane, train: Train, hotel: Hotel, car: Car, bus: Bus, ferry: Ticket, other: Ticket,
+}
+
+type EventType = 'depart' | 'arrive' | 'checkin' | 'checkout' | 'default'
+
+type DayEntry = {
+  id: string
+  ticket: ReturnType<typeof useTickets>['tickets'][number]
+  eventType: EventType
+  time: string | undefined
+}
+
+function timeToMinutes(t: string | undefined): number {
+  if (!t) return 9999
+  const [h, m] = t.split(':').map(Number)
+  return (h ?? 0) * 60 + (m ?? 0)
 }
 
 function dateMatchesDay(dateStr: string, day: Date): boolean {
@@ -18,7 +32,6 @@ function dateMatchesDay(dateStr: string, day: Date): boolean {
 export default function ItineraryTab({ trip }: { trip: Trip }) {
   const { tickets } = useTickets(trip.id)
   const [activeIdx, setActiveIdx] = useState(0)
-  const pillsRef = useRef<HTMLDivElement>(null)
   const activePillRef = useRef<HTMLButtonElement>(null)
 
   const days = useMemo(() =>
@@ -26,14 +39,12 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   , [trip.startDate, trip.endDate])
 
   const ticketsByDate = useMemo(() => {
-    const map: Record<string, { ticket: (typeof tickets)[number]; checkout: boolean }[]> = {}
+    const map: Record<string, DayEntry[]> = {}
 
-    function addToDay(day: Date, ticket: (typeof tickets)[number], checkout: boolean) {
-      const dayStr = format(day, 'yyyy-MM-dd')
-      if (!map[dayStr]) map[dayStr] = []
-      if (!map[dayStr].find(e => e.ticket.id === ticket.id && e.checkout === checkout)) {
-        map[dayStr].push({ ticket, checkout })
-      }
+    function addEntry(day: Date, entry: DayEntry) {
+      const key = format(day, 'yyyy-MM-dd')
+      if (!map[key]) map[key] = []
+      if (!map[key].find(e => e.id === entry.id)) map[key].push(entry)
     }
 
     for (const ticket of tickets) {
@@ -41,22 +52,69 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
       const datesToTry: string[] = []
       if (data.date) datesToTry.push(data.date)
       if (data.allDates) datesToTry.push(...data.allDates)
-      for (const day of days) {
-        if (datesToTry.some(d => dateMatchesDay(d, day))) addToDay(day, ticket, false)
+
+      const matchingDays = days.filter(day => datesToTry.some(d => dateMatchesDay(d, day)))
+
+      for (const day of matchingDays) {
+        if (data.type === 'flight' || data.type === 'train') {
+          // Departure event
+          addEntry(day, {
+            id: `${ticket.id}-depart`,
+            ticket, eventType: 'depart',
+            time: data.departureTime,
+          })
+          // Arrival event — shown on same day (we don't have arrival date)
+          if (data.arrivalTime) {
+            addEntry(day, {
+              id: `${ticket.id}-arrive`,
+              ticket, eventType: 'arrive',
+              time: data.arrivalTime,
+            })
+          }
+        } else {
+          addEntry(day, {
+            id: `${ticket.id}-default`,
+            ticket, eventType: 'default',
+            time: data.departureTime,
+          })
+        }
       }
-      if (data.type === 'hotel' && data.checkOut) {
-        const checkOutDateStr = data.checkOut.match(/[A-Z]\w+\s+\d{1,2},?\s*\d{4}/i)?.[0]
-        if (checkOutDateStr) {
-          for (const day of days) {
-            if (dateMatchesDay(checkOutDateStr, day)) addToDay(day, ticket, true)
+
+      // Hotel check-in day
+      if (data.type === 'hotel') {
+        for (const day of matchingDays) {
+          addEntry(day, {
+            id: `${ticket.id}-checkin`,
+            ticket, eventType: 'checkin',
+            time: data.checkIn?.match(/\b\d{1,2}:\d{2}\b/)?.[0],
+          })
+        }
+        // Hotel check-out on checkout date
+        if (data.checkOut) {
+          const coDateStr = data.checkOut.match(/[A-Z]\w+\s+\d{1,2},?\s*\d{4}/i)?.[0]
+          if (coDateStr) {
+            for (const day of days) {
+              if (dateMatchesDay(coDateStr, day)) {
+                addEntry(day, {
+                  id: `${ticket.id}-checkout`,
+                  ticket, eventType: 'checkout',
+                  time: data.checkOut.match(/\b\d{1,2}:\d{2}\b/)?.[0],
+                })
+              }
+            }
           }
         }
       }
     }
+
+    // Sort each day's events chronologically
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+    }
+
     return map
   }, [tickets, days])
 
-  // Auto-scroll active pill into view
   useEffect(() => {
     activePillRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [activeIdx])
@@ -68,11 +126,7 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
   return (
     <div className="flex flex-col h-full">
       {/* Day pills */}
-      <div
-        ref={pillsRef}
-        className="flex gap-2 px-4 py-4 overflow-x-auto"
-        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
-      >
+      <div className="flex gap-2 px-4 py-4 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
         {days.map((day, i) => {
           const active = i === activeIdx
           const hasEvents = (ticketsByDate[format(day, 'yyyy-MM-dd')] ?? []).length > 0
@@ -85,14 +139,13 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
               style={{
                 width: 58, height: 82,
                 background: active ? '#e76a55' : '#0c1b30',
-                color: active ? '#fff' : undefined,
                 boxShadow: active ? 'none' : '0 1px 0 rgba(255,255,255,0.06)',
                 border: 'none', cursor: 'pointer',
               }}
             >
-              <span className="font-mono text-[9px] uppercase tracking-wide opacity-70">{format(day, 'EEE')}</span>
-              <span className="font-display italic text-3xl leading-none">{format(day, 'd')}</span>
-              <span className={`w-1.5 h-1.5 rounded-full ${hasEvents ? (active ? 'bg-white/70' : 'bg-indigo-400') : 'opacity-0'}`} />
+              <span className="font-mono text-[9px] uppercase tracking-wide text-white/60">{format(day, 'EEE')}</span>
+              <span className="font-display italic text-3xl leading-none text-white">{format(day, 'd')}</span>
+              <span className={`w-1.5 h-1.5 rounded-full transition-opacity ${hasEvents ? (active ? 'bg-white/70 opacity-100' : 'bg-indigo-400 opacity-100') : 'opacity-0'}`} />
             </button>
           )
         })}
@@ -118,50 +171,76 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           </div>
         ) : (
           <div className="relative">
-            {/* Vertical line */}
-            <div className="absolute left-[42px] top-2 bottom-2 w-px bg-white/[0.08]" />
+            <div className="absolute left-[42px] top-2 bottom-2 w-px bg-white/[0.07]" />
 
-            {dayEvents.map(({ ticket, checkout }) => {
+            {dayEvents.map((entry) => {
+              const { ticket, eventType, time } = entry
               const data = { ...ticket.parsed, ...ticket.manualOverrides }
               const Icon = TYPE_ICONS[data.type] ?? Ticket
 
+              let title = ''
               let subtitle = ''
-              let time: string | undefined
+              let tag = ''
 
-              if (data.type === 'hotel') {
-                subtitle = (checkout ? 'Check-out' : 'Check-in') + (data.hotelName ? ` · ${data.hotelName}` : '')
-                time = (checkout ? data.checkOut : data.checkIn)?.match(/\b\d{1,2}:\d{2}\b/)?.[0]
-              } else {
-                if (data.flightNumber) subtitle = data.flightNumber + (data.origin && data.destination ? ` · ${data.origin} → ${data.destination}` : '')
-                else if (data.rentalCompany) subtitle = data.rentalCompany
-                else if (data.hotelName) subtitle = data.hotelName
-                time = data.departureTime
+              switch (eventType) {
+                case 'depart':
+                  title = data.type === 'train' ? 'Departs' : 'Take off'
+                  subtitle = [data.flightNumber, data.origin && data.destination ? `${data.origin} → ${data.destination}` : null]
+                    .filter(Boolean).join(' · ')
+                  tag = data.type === 'train' ? 'Train' : 'Flight'
+                  break
+                case 'arrive':
+                  title = data.type === 'train' ? 'Arrives' : 'Landing'
+                  subtitle = data.destination ? `Arriving ${data.destination}` : ''
+                  if (data.airline) subtitle = data.airline + (subtitle ? ' · ' + subtitle : '')
+                  tag = data.type === 'train' ? 'Train' : 'Flight'
+                  break
+                case 'checkin':
+                  title = 'Check in'
+                  subtitle = data.hotelName ?? ''
+                  tag = 'Stay'
+                  break
+                case 'checkout':
+                  title = 'Check out'
+                  subtitle = data.hotelName ?? ''
+                  tag = 'Stay'
+                  break
+                default:
+                  title = data.type.charAt(0).toUpperCase() + data.type.slice(1)
+                  subtitle = data.rentalCompany ?? data.hotelName ?? ''
+                  tag = data.type
               }
 
               return (
-                <div key={`${ticket.id}-${checkout}`} className="flex gap-3 py-2.5" style={{ position: 'relative', zIndex: 1 }}>
-                  {/* Time column */}
-                  <div className="w-10 text-right pt-2.5 shrink-0">
-                    {time ? (
-                      <span className="font-mono text-[11px] text-white/70 leading-none">{time}</span>
-                    ) : (
-                      <Clock size={12} className="text-slate-600 ml-auto" />
-                    )}
+                <div key={entry.id} className="flex gap-3 py-2" style={{ position: 'relative', zIndex: 1 }}>
+                  {/* Time */}
+                  <div className="w-10 text-right pt-3 shrink-0">
+                    {time
+                      ? <span className="font-mono text-[11px] text-white/70 leading-none">{time}</span>
+                      : <Clock size={11} className="text-slate-700 ml-auto mt-0.5" />
+                    }
                   </div>
 
                   {/* Icon dot */}
-                  <div className="shrink-0 flex justify-center pt-2" style={{ width: 28, zIndex: 1 }}>
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center"
-                      style={{ background: '#0c1b30', border: '1.5px solid rgba(255,255,255,0.15)' }}
-                    >
+                  <div className="shrink-0 flex justify-center pt-2.5" style={{ width: 28, zIndex: 1 }}>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: '#0c1b30', border: '1.5px solid rgba(255,255,255,0.14)' }}>
                       <Icon size={13} className="text-indigo-400" />
                     </div>
                   </div>
 
                   {/* Card */}
-                  <div className="flex-1 bg-slate-900 rounded-2xl px-3 py-2.5 min-w-0">
-                    <p className="text-sm font-semibold text-white capitalize">{data.type}</p>
+                  <div className="flex-1 bg-slate-900 rounded-2xl px-3 py-2.5 min-w-0"
+                    style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.04)' }}>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold text-white leading-snug">{title}</p>
+                      {tag && (
+                        <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full"
+                          style={{ background: '#f3e9d520', color: '#f3e9d580', border: '1px solid #f3e9d515' }}>
+                          {tag}
+                        </span>
+                      )}
+                    </div>
                     {subtitle && <p className="text-xs text-slate-400 mt-0.5 leading-snug">{subtitle}</p>}
                   </div>
                 </div>
@@ -169,6 +248,12 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
             })}
           </div>
         )}
+
+        {/* Add stop button */}
+        <button className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold text-slate-600"
+          style={{ border: '1.5px dashed rgba(255,255,255,0.08)' }}>
+          + Add stop to {activeDay ? format(activeDay, 'MMM d') : 'day'}
+        </button>
       </div>
     </div>
   )

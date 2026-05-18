@@ -8,9 +8,22 @@ service cloud.firestore {
     }
 
     match /trips/{tripId} {
-      allow read: if request.auth != null && request.auth.uid in resource.data.members;
+      // Non-members need to read the trip to verify the invite token before joining
+      allow read: if request.auth != null &&
+        (request.auth.uid in resource.data.members ||
+         resource.data.inviteToken != null);
+
       allow create: if request.auth != null && request.auth.uid in request.resource.data.members;
-      allow update: if request.auth != null && request.auth.uid in resource.data.members;
+
+      allow update: if request.auth != null && (
+        request.auth.uid in resource.data.members ||
+        // Joining via invite: trip has a token, user adds only themselves to members/memberDetails
+        (resource.data.inviteToken != null &&
+         request.auth.uid in request.resource.data.members &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['members', 'memberDetails']))
+      );
+
       allow delete: if request.auth != null && request.auth.uid == resource.data.ownerId;
     }
 

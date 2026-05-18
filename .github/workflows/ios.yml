@@ -41,8 +41,6 @@ jobs:
       - name: Build and upload to TestFlight
         run: cd ios/App && fastlane beta
         env:
-          ASC_KEY_ID:      ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID:   ${{ secrets.ASC_ISSUER_ID }}
-          ASC_KEY_PATH:    ${{ format('{0}/.private_keys/AuthKey_{1}.p8', env.HOME, secrets.ASC_KEY_ID) }}
-          BUILD_NUMBER:    ${{ github.run_number }}
-          MATCH_PASSWORD:  ""
+          ASC_KEY_ID:     ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID:  ${{ secrets.ASC_ISSUER_ID }}
+          BUILD_NUMBER:   ${{ github.run_number }}

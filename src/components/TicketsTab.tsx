@@ -146,8 +146,6 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
   )
 }
 
-// ── Compact card shown in the list ──────────────────────────────────────────
-
 interface CardProps {
   ticket: TicketType
   members: { uid: string; displayName: string | null; email: string }[]
@@ -158,60 +156,145 @@ interface CardProps {
 
 function TicketCard({ ticket, members, onOpen, onDelete, onAssign }: CardProps) {
   const data = { ...ticket.parsed, ...ticket.manualOverrides }
+  const isBoardingPass = data.type === 'flight' || data.type === 'train'
   const Icon = TYPE_ICONS[data.type] ?? Ticket
 
+  const assignLabel = ticket.assignedMemberUid === 'all'
+    ? 'Everyone'
+    : (members.find(m => m.uid === ticket.assignedMemberUid)?.displayName
+      || members.find(m => m.uid === ticket.assignedMemberUid)?.email
+      || '')
+
+  if (isBoardingPass) {
+    const shortDate = data.date?.replace(/\d{4}/, '').trim().replace(/,$/, '').trim() ?? '—'
+    const shortClass = data.cabinClass?.split(' ')[0] ?? '—'
+    return (
+      <div
+        className="rounded-[22px] overflow-hidden cursor-pointer"
+        style={{ background: '#0c1b30', boxShadow: '0 1px 0 rgba(255,255,255,0.06), 0 14px 30px -20px rgba(0,0,0,0.4)' }}
+        onClick={onOpen}
+      >
+        {/* Header: airline + flight number */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-1">
+          <div className="flex items-center gap-2">
+            <Icon size={13} className="text-slate-400" />
+            <span className="text-xs font-semibold text-slate-300">{data.airline ?? (data.type === 'train' ? 'Train' : 'Flight')}</span>
+          </div>
+          <span className="font-mono text-xs text-slate-500">{data.flightNumber}</span>
+        </div>
+
+        {/* Route: big italic IATA codes */}
+        <div className="flex items-center px-4 py-4 gap-2">
+          <div className="flex-1">
+            <div className="font-display italic text-white leading-none" style={{ fontSize: 48 }}>{data.origin ?? '—'}</div>
+            <div className="text-xs text-slate-500 mt-1">{data.departureTime ?? ''}</div>
+          </div>
+
+          <div className="flex flex-col items-center gap-1.5 shrink-0 px-1">
+            <div className="w-16 border-t border-dashed border-white/10" />
+            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center">
+              <Icon size={14} className="text-slate-400" style={{ transform: data.type === 'flight' ? 'rotate(45deg)' : 'none' }} />
+            </div>
+            <span className="font-mono text-[9px] text-slate-600 uppercase">{shortDate}</span>
+          </div>
+
+          <div className="flex-1 text-right">
+            <div className="font-display italic text-white leading-none" style={{ fontSize: 48 }}>{data.destination ?? '—'}</div>
+            <div className="text-xs text-slate-500 mt-1">{data.arrivalTime ?? ''}</div>
+          </div>
+        </div>
+
+        {/* Perforation */}
+        <div className="relative mx-0 my-0">
+          <div className="absolute -left-1.5 -top-1.5 w-3 h-3 rounded-full bg-slate-950" />
+          <div className="absolute -right-1.5 -top-1.5 w-3 h-3 rounded-full bg-slate-950" />
+          <div className="border-t border-dashed border-white/10 mx-3" />
+        </div>
+
+        {/* Stub: date / gate / seat / class */}
+        <div className="grid grid-cols-4 px-4 py-3 gap-2">
+          {[
+            { k: 'Date',  v: shortDate },
+            { k: 'Gate',  v: data.gate ?? '—' },
+            { k: 'Seat',  v: data.seat ?? '—' },
+            { k: 'Class', v: shortClass },
+          ].map(({ k, v }) => (
+            <div key={k}>
+              <div className="font-mono text-[9px] text-slate-600 uppercase tracking-wide">{k}</div>
+              <div className="text-xs font-semibold text-white mt-0.5 truncate">{v}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Status bar */}
+        <div className="flex items-center justify-between px-4 py-2.5 rounded-b-[22px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+            <span className="text-xs font-medium text-slate-300">{data.passengerName || assignLabel || 'Tap to view'}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={ticket.assignedMemberUid ?? ''}
+              onClick={e => e.stopPropagation()}
+              onChange={e => { e.stopPropagation(); onAssign(e.target.value || null) }}
+              className="bg-transparent text-slate-600 text-[10px] font-mono outline-none cursor-pointer max-w-[80px] truncate"
+            >
+              <option value="">Assign…</option>
+              <option value="all">Everyone</option>
+              {members.map(m => <option key={m.uid} value={m.uid}>{m.displayName ?? m.email}</option>)}
+            </select>
+            <button onClick={e => { e.stopPropagation(); onDelete() }} className="text-slate-700 hover:text-red-400">
+              <Trash2 size={13} />
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Hotel / car / other — clean card
   return (
-    <div className="bg-slate-900 rounded-xl overflow-hidden">
-      <button onClick={onOpen} className="w-full text-left p-4 hover:bg-slate-800/50 transition-colors">
+    <div className="bg-slate-900 rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.06)' }}>
+      <button onClick={onOpen} className="w-full text-left p-4">
         <div className="flex items-start gap-3">
-          <div className="bg-slate-800 rounded-lg p-2 shrink-0 mt-0.5">
-            <Icon size={18} className="text-indigo-400" />
+          <div className="bg-slate-800 rounded-xl p-2 shrink-0">
+            <Icon size={17} className="text-indigo-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-white capitalize">{data.type}</p>
-            {data.passengerName && (
-              <p className="text-xs text-indigo-300 font-medium mt-0.5">{data.passengerName}</p>
-            )}
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-              {data.origin && data.destination && (
-                <Field label="Route" value={`${data.origin} → ${data.destination}`} />
+            <div className="flex items-baseline gap-2">
+              <p className="font-semibold text-white capitalize">{data.type}</p>
+              {data.passengerName && (
+                <p className="text-xs text-indigo-400 font-medium truncate">{data.passengerName}</p>
               )}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
               {data.date && !data.checkIn && <Field label="Date" value={data.date} />}
-              {data.departureTime && <Field label="Departs" value={data.departureTime} />}
-              {data.arrivalTime && <Field label="Arrives" value={data.arrivalTime} />}
-              {data.flightNumber && <Field label="Flight" value={data.flightNumber} />}
               {data.bookingRef && <Field label="Ref" value={data.bookingRef} />}
               {data.hotelName && <Field label="Hotel" value={data.hotelName} />}
               {data.checkIn && <Field label="Check-in" value={data.checkIn} />}
               {data.checkOut && <Field label="Check-out" value={data.checkOut} />}
+              {data.roomType && <Field label="Room" value={data.roomType} />}
+              {data.rentalCompany && <Field label="Rental co." value={data.rentalCompany} />}
+              {data.pickupLocation && <Field label="Pick-up" value={data.pickupLocation} />}
             </div>
           </div>
-          <span className="text-xs text-slate-600 shrink-0 mt-1">tap to view</span>
+          <span className="text-[10px] text-slate-600 shrink-0 mt-0.5">tap</span>
         </div>
       </button>
 
-      <div className="px-4 pb-3 flex items-center gap-2">
-        {members.length > 0 && (
-          <>
-            <User size={12} className="text-slate-500 shrink-0" />
-            <select
-              value={ticket.assignedMemberUid ?? ''}
-              onChange={e => onAssign(e.target.value || null)}
-              className="flex-1 bg-slate-800 text-slate-300 text-xs rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value="">Assign to...</option>
-              <option value="all">Everyone</option>
-              {members.map(m => (
-                <option key={m.uid} value={m.uid}>{m.displayName ?? m.email}</option>
-              ))}
-            </select>
-          </>
-        )}
-        <button
-          onClick={e => { e.stopPropagation(); onDelete() }}
-          className="ml-auto text-slate-600 hover:text-red-400 transition-colors shrink-0"
+      <div className="px-4 pb-3 flex items-center gap-2 border-t border-white/[0.04]">
+        <User size={11} className="text-slate-600 shrink-0" />
+        <select
+          value={ticket.assignedMemberUid ?? ''}
+          onChange={e => onAssign(e.target.value || null)}
+          className="flex-1 bg-slate-800 text-slate-400 text-xs rounded-lg px-2 py-1 outline-none"
         >
-          <Trash2 size={14} />
+          <option value="">Assign to…</option>
+          <option value="all">Everyone</option>
+          {members.map(m => <option key={m.uid} value={m.uid}>{m.displayName ?? m.email}</option>)}
+        </select>
+        <button onClick={e => { e.stopPropagation(); onDelete() }} className="text-slate-700 hover:text-red-400 shrink-0">
+          <Trash2 size={13} />
         </button>
       </div>
     </div>

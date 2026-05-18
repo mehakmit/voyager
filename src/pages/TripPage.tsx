@@ -4,16 +4,24 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import type { Trip } from '@/types'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft, Plane, Map, Hotel, Wallet, Car, Settings } from 'lucide-react'
 import TicketsTab from '@/components/TicketsTab'
 import ItineraryTab from '@/components/ItineraryTab'
 import ExpensesTab from '@/components/ExpensesTab'
 import CarTab from '@/components/CarTab'
 import HotelTab from '@/components/HotelTab'
-import Countdown from '@/components/Countdown'
 import TripSettingsModal from '@/components/TripSettingsModal'
+import { differenceInDays } from 'date-fns'
 
 type Tab = 'tickets' | 'itinerary' | 'hotel' | 'expenses' | 'car'
+
+const TAB_CONFIG: { key: Tab; label: string; Icon: typeof Plane }[] = [
+  { key: 'tickets',   label: 'Tickets', Icon: Plane },
+  { key: 'itinerary', label: 'Plan',    Icon: Map },
+  { key: 'hotel',     label: 'Stays',   Icon: Hotel },
+  { key: 'expenses',  label: 'Money',   Icon: Wallet },
+  { key: 'car',       label: 'Car',     Icon: Car },
+]
 
 export default function TripPage() {
   const { id } = useParams<{ id: string }>()
@@ -30,58 +38,93 @@ export default function TripPage() {
     })
   }, [id])
 
-  if (!trip) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading...</div>
+  if (!trip) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading…</div>
 
   const isOwner = trip.ownerId === user?.uid
-  const tabs: Tab[] = [
-    'tickets',
-    'itinerary',
-    'hotel',
-    ...(trip.settings.showExpenses ? ['expenses' as Tab] : []),
-    ...(trip.settings.showCar ? ['car' as Tab] : []),
-  ]
+  const daysUntil = differenceInDays(trip.startDate, Date.now())
+  const isUpcoming = trip.startDate > Date.now()
+
+  const visibleTabs = TAB_CONFIG.filter(t =>
+    t.key !== 'expenses' && t.key !== 'car'
+      ? true
+      : t.key === 'expenses' ? trip.settings.showExpenses
+      : trip.settings.showCar
+  )
 
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      <header className="flex items-center gap-3 px-4 pb-4 pt-safe border-b border-slate-800">
-        <button onClick={() => navigate('/')} className="text-slate-400 hover:text-white">
-          <ArrowLeft size={20} />
+      {/* Header */}
+      <header className="flex items-center gap-3 px-4 pb-3 pt-safe border-b border-white/[0.08]">
+        <button
+          onClick={() => navigate('/')}
+          className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 shrink-0"
+        >
+          <ArrowLeft size={17} />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-bold truncate">{trip.name}</h1>
+          <h1 className="font-display italic text-xl leading-tight text-white truncate">{trip.name}</h1>
           <p className="text-slate-400 text-xs truncate">{trip.destination}</p>
         </div>
+        {isUpcoming && daysUntil >= 0 && (
+          <div className="text-right shrink-0">
+            <p className="font-display italic text-2xl leading-none text-indigo-400">{daysUntil}</p>
+            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wide">days to go</p>
+          </div>
+        )}
         {isOwner && (
-          <button onClick={() => setShowSettings(true)} className="text-slate-400 hover:text-white">
-            <Settings size={18} />
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 shrink-0"
+          >
+            <Settings size={16} />
           </button>
         )}
       </header>
 
-      <Countdown startDate={trip.startDate} />
-
-      <nav className="flex border-b border-slate-800 overflow-x-auto px-2">
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-3 text-sm font-medium capitalize whitespace-nowrap transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? 'border-indigo-500 text-white'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </nav>
-
-      <div className="flex-1 overflow-auto pb-safe">
-        {activeTab === 'tickets' && <TicketsTab tripId={trip.id} />}
+      {/* Content */}
+      <div className="flex-1 overflow-auto" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+        {activeTab === 'tickets'   && <TicketsTab tripId={trip.id} />}
         {activeTab === 'itinerary' && <ItineraryTab trip={trip} />}
-        {activeTab === 'hotel' && <HotelTab tripId={trip.id} />}
-        {activeTab === 'expenses' && trip.settings.showExpenses && <ExpensesTab trip={trip} />}
-        {activeTab === 'car' && trip.settings.showCar && <CarTab tripId={trip.id} />}
+        {activeTab === 'hotel'     && <HotelTab tripId={trip.id} />}
+        {activeTab === 'expenses'  && trip.settings.showExpenses && <ExpensesTab trip={trip} />}
+        {activeTab === 'car'       && trip.settings.showCar      && <CarTab tripId={trip.id} />}
+      </div>
+
+      {/* Floating bottom tab bar */}
+      <div
+        className="fixed left-3 right-3 z-30"
+        style={{ bottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      >
+        <nav
+          className="flex items-center justify-between px-1.5 py-1.5 rounded-[28px]"
+          style={{
+            background: '#000812',
+            boxShadow: '0 14px 30px -10px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.06)',
+          }}
+        >
+          {visibleTabs.map(({ key, label, Icon }) => {
+            const active = activeTab === key
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className="flex items-center gap-1.5 rounded-full transition-all duration-200"
+                style={{
+                  padding: active ? '8px 14px' : '8px 10px',
+                  background: active ? '#e76a55' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={18} color="#fff" />
+                {active && (
+                  <span className="text-white text-xs font-semibold whitespace-nowrap">{label}</span>
+                )}
+              </button>
+            )
+          })}
+        </nav>
       </div>
 
       {showSettings && (

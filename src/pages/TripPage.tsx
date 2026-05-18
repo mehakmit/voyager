@@ -4,7 +4,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import type { Trip } from '@/types'
-import { ArrowLeft, Plane, Map, Hotel, Wallet, Car, Settings } from 'lucide-react'
+import { Home, Plane, Map, Hotel, Wallet, Car, Settings } from 'lucide-react'
 import TicketsTab from '@/components/TicketsTab'
 import ItineraryTab from '@/components/ItineraryTab'
 import ExpensesTab from '@/components/ExpensesTab'
@@ -15,7 +15,7 @@ import { differenceInDays } from 'date-fns'
 
 type Tab = 'tickets' | 'itinerary' | 'hotel' | 'expenses' | 'car'
 
-const TAB_CONFIG: { key: Tab; label: string; Icon: typeof Plane }[] = [
+const TRIP_TABS: { key: Tab; label: string; Icon: typeof Plane }[] = [
   { key: 'tickets',   label: 'Tickets', Icon: Plane },
   { key: 'itinerary', label: 'Plan',    Icon: Map },
   { key: 'hotel',     label: 'Stays',   Icon: Hotel },
@@ -44,7 +44,7 @@ export default function TripPage() {
   const daysUntil = differenceInDays(trip.startDate, Date.now())
   const isUpcoming = trip.startDate > Date.now()
 
-  const visibleTabs = TAB_CONFIG.filter(t =>
+  const visibleTabs = TRIP_TABS.filter(t =>
     t.key !== 'expenses' && t.key !== 'car'
       ? true
       : t.key === 'expenses' ? trip.settings.showExpenses
@@ -54,30 +54,16 @@ export default function TripPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 pb-3 pt-safe border-b border-white/[0.08]">
-        <button
-          onClick={() => navigate('/')}
-          className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 shrink-0"
-        >
-          <ArrowLeft size={17} />
-        </button>
+      <header className="flex items-center gap-2 px-4 pb-3 pt-safe border-b border-white/[0.06]">
         <div className="flex-1 min-w-0">
-          <h1 className="font-display italic text-xl leading-tight text-white truncate">{trip.name}</h1>
-          <p className="text-slate-400 text-xs truncate">{trip.destination}</p>
+          <p className="font-mono text-[10px] text-slate-500 uppercase tracking-widest truncate">{trip.destination}</p>
+          <h1 className="font-display italic text-2xl leading-tight text-white truncate">{trip.name}</h1>
         </div>
         {isUpcoming && daysUntil >= 0 && (
           <div className="text-right shrink-0">
             <p className="font-display italic text-2xl leading-none text-indigo-400">{daysUntil}</p>
-            <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wide">days to go</p>
+            <p className="text-[9px] font-mono text-slate-500 uppercase tracking-wide mt-0.5">days to go</p>
           </div>
-        )}
-        {isOwner && (
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 shrink-0"
-          >
-            <Settings size={16} />
-          </button>
         )}
       </header>
 
@@ -90,18 +76,22 @@ export default function TripPage() {
         {activeTab === 'car'       && trip.settings.showCar      && <CarTab tripId={trip.id} />}
       </div>
 
-      {/* Floating bottom tab bar */}
-      <div
-        className="fixed left-3 right-3 z-30"
-        style={{ bottom: 'max(14px, env(safe-area-inset-bottom))' }}
-      >
+      {/* Floating bottom tab bar — matches design exactly */}
+      <div className="fixed left-3 right-3 z-30" style={{ bottom: 'max(14px, env(safe-area-inset-bottom))' }}>
         <nav
           className="flex items-center justify-between px-1.5 py-1.5 rounded-[28px]"
-          style={{
-            background: '#000812',
-            boxShadow: '0 14px 30px -10px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.06)',
-          }}
+          style={{ background: '#000812', boxShadow: '0 14px 30px -10px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.06)' }}
         >
+          {/* Home — navigates back to trips list */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center rounded-full"
+            style={{ padding: '8px 10px', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <Home size={18} color="rgba(255,255,255,0.55)" />
+          </button>
+
+          {/* Trip tabs */}
           {visibleTabs.map(({ key, label, Icon }) => {
             const active = activeTab === key
             return (
@@ -112,18 +102,23 @@ export default function TripPage() {
                 style={{
                   padding: active ? '8px 14px' : '8px 10px',
                   background: active ? '#e76a55' : 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  flexShrink: 0,
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
                 }}
               >
                 <Icon size={18} color="#fff" />
-                {active && (
-                  <span className="text-white text-xs font-semibold whitespace-nowrap">{label}</span>
-                )}
+                {active && <span className="text-white text-xs font-semibold whitespace-nowrap">{label}</span>}
               </button>
             )
           })}
+
+          {/* Settings */}
+          <button
+            onClick={() => isOwner ? setShowSettings(true) : undefined}
+            className="flex items-center rounded-full"
+            style={{ padding: '8px 10px', background: 'transparent', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <Settings size={18} color="rgba(255,255,255,0.55)" />
+          </button>
         </nav>
       </div>
 

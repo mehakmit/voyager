@@ -23,12 +23,22 @@ platform :ios do
       xcodeproj:    "App.xcodeproj",
     )
 
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      team_id:               "ACLCAVPU3N",
+      bundle_identifier:     "app.odyssey",
+      path:                  "App.xcodeproj",
+      profile_uuid:          lane_context[SharedValues::SIGH_UDID],
+    )
+
     build_app(
       project:        "App.xcodeproj",
       scheme:         "App",
       configuration:  "Release",
       export_method:  "app-store",
+      xcargs:         "DEVELOPMENT_TEAM=ACLCAVPU3N",
       export_options: {
+        teamID:               "ACLCAVPU3N",
         provisioningProfiles: {
           "app.odyssey" => "app.odyssey AppStore",
         },

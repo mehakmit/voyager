@@ -1,10 +1,24 @@
+import { useState } from 'react'
 import { useTickets } from '@/hooks/useTickets'
-import { Hotel, MapPin, Key, Wifi, Plus } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
+import { Hotel, MapPin, Key, Wifi, Loader2 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { tryParseDate } from '@/lib/parseDate'
 
 export default function HotelTab({ tripId }: { tripId: string }) {
-  const { tickets, loading } = useTickets(tripId)
+  const { tickets, loading, uploadTicket } = useTickets(tripId)
+  const { user } = useAuth()
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length || !user) return
+    setUploading(true)
+    try {
+      for (const file of Array.from(files)) await uploadTicket(file, user.uid)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const hotelTickets = tickets
     .filter(t => (t.parsed.type === 'hotel' || t.manualOverrides?.type === 'hotel'))
@@ -24,9 +38,11 @@ export default function HotelTab({ tripId }: { tripId: string }) {
             {loading ? '…' : `${hotelTickets.length} hotel${hotelTickets.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <button className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white mt-1">
-          <Plus size={18} />
-        </button>
+        <label className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white mt-1 cursor-pointer shrink-0">
+          {uploading ? <Loader2 size={16} className="animate-spin" /> : <span className="text-xl leading-none">+</span>}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*" multiple className="sr-only"
+            onChange={e => { handleFiles(e.target.files); e.target.value = '' }} />
+        </label>
       </div>
 
       {loading && <p className="text-slate-500 text-sm px-5">Loading…</p>}

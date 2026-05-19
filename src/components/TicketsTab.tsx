@@ -65,47 +65,48 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
   })
 
   return (
-    <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <div
-        {...getRootProps()}
-        className={`border-2 border-dashed rounded-xl transition-colors ${
-          isDragActive ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 hover:border-slate-500'
-        }`}
-      >
-        {uploading ? (
-          <div className="p-8 flex flex-col items-center gap-2 text-slate-400">
-            <Loader2 size={24} className="animate-spin" />
-            <p className="text-sm">Parsing ticket{uploadCount > 1 ? `s (${uploadCount} found)` : ''}...</p>
-          </div>
-        ) : (
-          <label className="p-8 flex flex-col items-center gap-2 text-slate-400 cursor-pointer">
-            <Upload size={24} />
-            <p className="text-sm">Drop tickets here or tap to upload</p>
-            <p className="text-xs text-slate-500">PDF with multiple flights creates separate tickets</p>
-            <input
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*"
-              multiple
-              className="sr-only"
-              onChange={e => {
-                const files = e.target.files
-                if (files?.length) {
-                  onDrop(Array.from(files))
-                  e.target.value = ''
-                }
-              }}
-            />
-          </label>
-        )}
+    <div className="pb-6" {...getRootProps()}>
+      {/* Header */}
+      <div className="flex items-start justify-between px-5 pt-5 pb-4">
+        <div>
+          <h1 className="font-display italic text-4xl text-white leading-none">Tickets</h1>
+          <p className="text-slate-400 text-sm mt-1">
+            {loading ? '…' : `${tickets.length} ticket${tickets.length !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+        <label className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white mt-1 cursor-pointer shrink-0">
+          {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+          <input
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*"
+            multiple
+            className="sr-only"
+            onChange={e => {
+              const files = e.target.files
+              if (files?.length) { onDrop(Array.from(files)); e.target.value = '' }
+            }}
+          />
+        </label>
       </div>
 
-      {uploadError && (
-        <p className="text-red-400 text-sm text-center">{uploadError}</p>
+      {isDragActive && (
+        <div className="mx-4 mb-4 border-2 border-dashed border-indigo-500 bg-indigo-500/10 rounded-xl p-6 text-center text-indigo-400 text-sm">
+          Drop tickets here
+        </div>
+      )}
+      {uploading && (
+        <p className="text-center text-slate-400 text-sm px-5 mb-4">
+          Parsing ticket{uploadCount > 1 ? `s (${uploadCount} found)` : ''}…
+        </p>
       )}
 
-      {loading && <p className="text-slate-400 text-sm">Loading tickets...</p>}
+      {uploadError && (
+        <p className="text-red-400 text-sm text-center px-5">{uploadError}</p>
+      )}
 
-      <div className="space-y-3">
+      {loading && <p className="text-slate-400 text-sm px-5">Loading tickets…</p>}
+
+      <div className="px-4 space-y-3">
         {tickets
           .slice()
           .sort((a, b) => {
@@ -128,9 +129,10 @@ export default function TicketsTab({ tripId }: { tripId: string }) {
       </div>
 
       {!loading && tickets.length === 0 && (
-        <p className="text-center text-slate-500 text-sm py-6">
-          No tickets yet. Upload a boarding pass or hotel confirmation.
-        </p>
+        <div className="flex flex-col items-center py-12 px-5 text-center">
+          <p className="font-display italic text-2xl text-slate-600">No tickets yet</p>
+          <p className="text-slate-600 text-sm mt-2">Tap the upload button to add a boarding pass or hotel confirmation.</p>
+        </div>
       )}
 
       {selectedTicket && (
@@ -411,11 +413,9 @@ function TicketModal({ ticket, members, onClose, onDelete, onAssign }: ModalProp
                   className="w-full rounded-lg object-contain max-h-96 bg-slate-800"
                 />
               ) : (
-                <a
-                  href={docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 bg-slate-800 hover:bg-slate-700 rounded-xl p-4 transition-colors"
+                <button
+                  onClick={() => window.open(docUrl!, '_blank')}
+                  className="w-full flex items-center gap-3 bg-slate-800 hover:bg-slate-700 rounded-xl p-4 transition-colors text-left"
                 >
                   <FileText size={24} className="text-indigo-400 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -423,7 +423,7 @@ function TicketModal({ ticket, members, onClose, onDelete, onAssign }: ModalProp
                     <p className="text-xs text-slate-400">Tap to open PDF</p>
                   </div>
                   <ExternalLink size={16} className="text-slate-400 shrink-0" />
-                </a>
+                </button>
               )
             ) : (
               <div className="flex items-center gap-3 bg-slate-800/50 rounded-xl p-4">

@@ -72,8 +72,8 @@ export default function CarTab({ tripId }: { tripId: string }) {
           </p>
         </div>
         <button
-          onClick={() => setShowForm(v => !v)}
-          className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-white mt-1"
+          onClick={() => setShowForm(true)}
+          className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white mt-1"
         >
           <Plus size={18} />
         </button>

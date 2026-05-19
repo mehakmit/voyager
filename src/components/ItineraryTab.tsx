@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react'
 import { useTickets } from '@/hooks/useTickets'
 import type { Trip, TicketType } from '@/types'
-import { format, eachDayOfInterval, isSameDay } from 'date-fns'
+import { format, eachDayOfInterval, isSameDay, addDays } from 'date-fns'
 import { Plane, Train, Hotel, Bus, Ticket, Car, Clock } from 'lucide-react'
 import { tryParseDate } from '@/lib/parseDate'
 
@@ -63,9 +63,11 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
             ticket, eventType: 'depart',
             time: data.departureTime,
           })
-          // Arrival event — shown on same day (we don't have arrival date)
+          // Arrival event — next day if arrival time is before departure time (overnight)
           if (data.arrivalTime) {
-            addEntry(day, {
+            const isOvernight = timeToMinutes(data.arrivalTime) < timeToMinutes(data.departureTime)
+            const arrivalDay = isOvernight ? addDays(day, 1) : day
+            addEntry(arrivalDay, {
               id: `${ticket.id}-arrive`,
               ticket, eventType: 'arrive',
               time: data.arrivalTime,
@@ -249,8 +251,9 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           </div>
         )}
 
-        {/* Add stop button */}
-        <button className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold text-slate-600"
+        <button
+          onClick={() => alert('Manual stops coming soon — for now upload tickets to auto-populate the plan.')}
+          className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold text-slate-600"
           style={{ border: '1.5px dashed rgba(255,255,255,0.08)' }}>
           + Add stop to {activeDay ? format(activeDay, 'MMM d') : 'day'}
         </button>

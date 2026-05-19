@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react'
-import {
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-} from 'firebase/auth'
+import { useState } from 'react'
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Navigate, useLocation } from 'react-router-dom'
 
 const googleProvider = new GoogleAuthProvider()
-const isNative = !!(window as any).Capacitor?.isNativePlatform?.()
 
 export default function AuthPage() {
   const { user } = useAuth()
@@ -20,22 +14,13 @@ export default function AuthPage() {
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? '/'
 
-  useEffect(() => {
-    // Handle Google redirect result when app resumes
-    getRedirectResult(auth).catch(() => {})
-  }, [])
-
   if (user) return <Navigate to={from} replace />
 
   async function signInWithGoogle() {
     setError('')
     setLoading(true)
     try {
-      if (isNative) {
-        await signInWithRedirect(auth, googleProvider)
-      } else {
-        await signInWithPopup(auth, googleProvider)
-      }
+      await signInWithPopup(auth, googleProvider)
     } catch (err: any) {
       setError(err.message)
       setLoading(false)

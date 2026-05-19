@@ -4,6 +4,10 @@ const config: CapacitorConfig = {
   appId: 'app.odyssey',
   appName: 'Odyssey',
   webDir: 'dist',
+  server: {
+    url: 'https://voyager-301a2.web.app',
+    cleartext: false,
+  },
   ios: {
     contentInset: 'automatic',
     backgroundColor: '#070e1c',

@@ -24,8 +24,8 @@ export default function AuthPage() {
         const { SocialLogin } = await import('@capgo/capacitor-social-login')
         await SocialLogin.initialize({
           google: {
-            webClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
-            iOSClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
+            webClientId: '947837806868-m7rrbj27g3atsk0bqadtcrdkkq6b18q3.apps.googleusercontent.com',
+            iOSClientId: '947837806868-m7rrbj27g3atsk0bqadtcrdkkq6b18q3.apps.googleusercontent.com',
           },
         })
         const result = await SocialLogin.login({ provider: 'google', options: {} })

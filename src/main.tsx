@@ -1,3 +1,8 @@
+// Unregister any stale PWA service workers — they can intercept requests and cause Script errors
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()))
+}
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

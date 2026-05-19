@@ -20,7 +20,7 @@ export default function AuthPage() {
     setError('')
     setLoading(true)
     try {
-      if (isNative) {
+      if (isNative && (window as any).Capacitor?.isPluginAvailable?.('SocialLogin')) {
         const { SocialLogin } = await import('@capgo/capacitor-social-login')
         await SocialLogin.initialize({
           google: {
@@ -47,6 +47,11 @@ export default function AuthPage() {
     setError('')
     setLoading(true)
     try {
+      if (!(window as any).Capacitor?.isPluginAvailable?.('SocialLogin')) {
+        setError('Please update the app to use Sign in with Apple.')
+        setLoading(false)
+        return
+      }
       const { SocialLogin } = await import('@capgo/capacitor-social-login')
       await SocialLogin.initialize({ apple: {} })
       const result = await SocialLogin.login({

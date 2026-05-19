@@ -63,7 +63,7 @@ platform :ios do
       scheme:           "App",
       configuration:    "Release",
       export_method:    "app-store",
-      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N CODE_SIGN_STYLE=Manual OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
+      xcargs:           "DEVELOPMENT_TEAM=ACLCAVPU3N OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       export_options:   {
         teamID:               "ACLCAVPU3N",
         provisioningProfiles: {

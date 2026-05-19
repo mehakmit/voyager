@@ -3,10 +3,8 @@ import { GoogleAuthProvider, OAuthProvider, signInWithCredential, signInWithPopu
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Navigate, useLocation } from 'react-router-dom'
-import { Capacitor } from '@capacitor/core'
-
 const googleProvider = new GoogleAuthProvider()
-const isNative = Capacitor.isNativePlatform()
+const isNative = !!(window as any).Capacitor?.isNativePlatform?.()
 
 export default function AuthPage() {
   const { user } = useAuth()

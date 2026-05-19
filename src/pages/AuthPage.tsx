@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { GoogleAuthProvider, OAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
 import { Navigate, useLocation } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 
 const googleProvider = new GoogleAuthProvider()
+const isNative = Capacitor.isNativePlatform()
 
 export default function AuthPage() {
   const { user } = useAuth()
@@ -20,13 +22,50 @@ export default function AuthPage() {
     setError('')
     setLoading(true)
     try {
-      await signInWithPopup(auth, googleProvider)
+      if (isNative) {
+        const { SocialLogin } = await import('@capgo/capacitor-social-login')
+        await SocialLogin.initialize({
+          google: {
+            webClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
+            iOSClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
+          },
+        })
+        const result = await SocialLogin.login({ provider: 'google', options: {} })
+        const { idToken, accessToken } = result.result as any
+        const credential = GoogleAuthProvider.credential(idToken ?? null, accessToken?.token)
+        await signInWithCredential(auth, credential)
+      } else {
+        await signInWithPopup(auth, googleProvider)
+      }
     } catch (err: any) {
-      setError(err.message)
+      if (err?.message !== 'The user closed the sign in dialog.') {
+        setError(err.message)
+      }
       setLoading(false)
     }
   }
 
+  async function signInWithApple() {
+    setError('')
+    setLoading(true)
+    try {
+      const { SocialLogin } = await import('@capgo/capacitor-social-login')
+      await SocialLogin.initialize({ apple: {} })
+      const result = await SocialLogin.login({
+        provider: 'apple',
+        options: { scopes: ['email', 'name'] },
+      })
+      const { idToken } = result.result as any
+      const provider = new OAuthProvider('apple.com')
+      const credential = provider.credential({ idToken })
+      await signInWithCredential(auth, credential)
+    } catch (err: any) {
+      if (err?.message !== 'The user closed the sign in dialog.') {
+        setError(err.message)
+      }
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -37,6 +76,19 @@ export default function AuthPage() {
         </div>
 
         <div className="bg-slate-900 rounded-2xl p-6 space-y-3">
+          {/* Sign in with Apple — native only */}
+          {isNative && (
+            <button
+              onClick={signInWithApple}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 bg-black disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-medium transition-colors"
+            >
+              <svg width="16" height="19" viewBox="0 0 16 19" fill="white">
+                <path d="M13.27 9.93c-.02-2.04 1.67-3.02 1.74-3.07C13.97 4.8 12.3 4.6 11.7 4.58c-1.38-.14-2.7.82-3.4.82-.7 0-1.78-.8-2.93-.78C3.83 4.65 2.3 5.67 1.47 7.2-.23 10.3.84 14.9 2.5 17.38c.82 1.2 1.8 2.54 3.08 2.49 1.24-.05 1.71-.8 3.21-.8 1.5 0 1.93.8 3.24.78 1.34-.02 2.18-1.22 2.99-2.43.95-1.39 1.34-2.74 1.36-2.81-.03-.01-2.6-1-2.61-3.68zM10.72 2.94C11.38 2.14 11.82 1.02 11.7 0c-.97.04-2.14.65-2.83 1.44C8.22 2.2 7.68 3.34 7.82 4.34c1.08.08 2.19-.55 2.9-1.4z"/>
+              </svg>
+              Sign in with Apple
+            </button>
+          )}
 
           {/* Continue with Google */}
           <button

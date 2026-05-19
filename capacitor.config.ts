@@ -16,6 +16,13 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 0,
     },
+    SocialLogin: {
+      google: {
+        webClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
+        iOSClientId: '947837806868-458ks4a37llqjrl3rqel1ji937n2lt0u.apps.googleusercontent.com',
+      },
+      apple: {},
+    },
   },
 };
 

@@ -160,7 +160,9 @@ export default function HotelTab({ tripId }: { tripId: string }) {
               {/* Next stay */}
               {nextData && idx === 0 && (
                 <div className="mt-5">
-                  <p className="font-mono text-[11px] text-slate-500 uppercase tracking-widest mb-3 px-1">Next stay</p>
+                  <p className="font-mono text-[11px] text-slate-500 uppercase tracking-widest mb-3 px-1">
+                    {checkInDate && checkInDate < new Date() ? 'Previous stay' : 'Next stay'}
+                  </p>
                   <div className="bg-slate-900 rounded-2xl p-4 flex items-center gap-3"
                     style={{ boxShadow: '0 1px 0 rgba(255,255,255,0.06)' }}>
                     <div className="w-20 h-20 rounded-2xl shrink-0 overflow-hidden"

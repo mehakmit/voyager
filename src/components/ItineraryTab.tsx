@@ -251,12 +251,6 @@ export default function ItineraryTab({ trip }: { trip: Trip }) {
           </div>
         )}
 
-        <button
-          onClick={() => alert('Manual stops coming soon — for now upload tickets to auto-populate the plan.')}
-          className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-semibold text-slate-600"
-          style={{ border: '1.5px dashed rgba(255,255,255,0.08)' }}>
-          + Add stop to {activeDay ? format(activeDay, 'MMM d') : 'day'}
-        </button>
       </div>
     </div>
   )

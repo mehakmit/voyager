@@ -414,7 +414,16 @@ function TicketModal({ ticket, members, onClose, onDelete, onAssign }: ModalProp
                 />
               ) : (
                 <button
-                  onClick={() => window.open(docUrl!, '_blank')}
+                  onClick={async () => {
+                    // Convert blob URL to data URL so it works across WKWebView contexts
+                    try {
+                      const res = await fetch(docUrl!)
+                      const blob = await res.blob()
+                      const reader = new FileReader()
+                      reader.onload = () => window.open(reader.result as string, '_blank')
+                      reader.readAsDataURL(blob)
+                    } catch { window.open(docUrl!, '_blank') }
+                  }}
                   className="w-full flex items-center gap-3 bg-slate-800 hover:bg-slate-700 rounded-xl p-4 transition-colors text-left"
                 >
                   <FileText size={24} className="text-indigo-400 shrink-0" />

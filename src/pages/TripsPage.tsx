@@ -73,11 +73,25 @@ export default function TripsPage() {
         )}
 
         {!loading && trips.length === 0 && (
-          <div className="text-center py-20 px-5">
-            <p className="font-display italic text-4xl text-slate-700">No trips yet</p>
-            <button onClick={() => setShowCreate(true)} className="mt-4 text-indigo-400 text-sm font-medium">
-              Plan your first adventure →
-            </button>
+          <div className="px-5 py-8">
+            <div className="rounded-[28px] overflow-hidden relative text-white px-6 py-10 text-center"
+              style={{ background: '#0c1b30', boxShadow: '0 24px 60px -28px rgba(0,0,0,0.7)' }}>
+              <div className="absolute inset-0 opacity-80"
+                style={{ background: 'repeating-linear-gradient(135deg, #152d48 0 16px, #0c1b30 16px 32px)' }} />
+              <div className="absolute inset-0"
+                style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0) 20%, #0c1b30 100%)' }} />
+              <div className="relative">
+                <p className="font-display italic text-5xl leading-tight text-white mb-3">Your next<br/>adventure<br/>awaits</p>
+                <p className="text-white/60 text-sm mb-6">Plan trips, split costs, and keep everyone on the same page.</p>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="px-6 py-3 rounded-full text-sm font-semibold text-white"
+                  style={{ background: '#e76a55' }}
+                >
+                  Plan your first trip
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

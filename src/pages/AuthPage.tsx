@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   GoogleAuthProvider,
-  OAuthProvider,
   signInWithPopup,
   signInWithRedirect,
-  signInWithCredential,
   getRedirectResult,
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
@@ -44,30 +42,6 @@ export default function AuthPage() {
     }
   }
 
-  async function signInWithApple() {
-    setError('')
-    setLoading(true)
-    try {
-      const { SignInWithApple } = await import('@capacitor-community/apple-sign-in')
-      const nonce = Math.random().toString(36).slice(2)
-      const result = await SignInWithApple.authorize({
-        clientId: 'app.odyssey',
-        redirectURI: 'https://voyager-301a2.firebaseapp.com/__/auth/handler',
-        scopes: 'email name',
-        nonce,
-      })
-      const provider = new OAuthProvider('apple.com')
-      const credential = provider.credential({
-        idToken: result.response.identityToken,
-      })
-      await signInWithCredential(auth, credential)
-    } catch (err: any) {
-      if (err?.message !== 'The user closed the native sign in flow.') {
-        setError(err.message)
-      }
-      setLoading(false)
-    }
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
@@ -78,19 +52,6 @@ export default function AuthPage() {
         </div>
 
         <div className="bg-slate-900 rounded-2xl p-6 space-y-3">
-          {/* Sign in with Apple — shown on native only */}
-          {isNative && (
-            <button
-              onClick={signInWithApple}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-100 disabled:opacity-50 text-gray-900 rounded-lg py-2.5 text-sm font-medium transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 814 1000" fill="currentColor">
-                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105.3-57.8-155.5-127.4C46 389.6 0 250 0 109.5 0 46.9 26.1 0 66.2 0c63.1 0 93.8 55 122.1 55 26.6 0 63.8-55 122.1-55 49.3 0 79.3 19.5 112.9 53.9 34.9 35.7 55 83.5 55 131.3 0 3.8-.3 7.5-.6 11.2 0 .3-.1.5-.1.8zM451.3 550.6c0 85.4-69.4 154.8-154.8 154.8s-154.8-69.4-154.8-154.8V0h-66v550.6C75.7 670 169.5 763.8 289.4 763.8 409.4 763.8 502.4 670 502.4 550.6V0h-51.1v550.6z"/>
-              </svg>
-              Sign in with Apple
-            </button>
-          )}
 
           {/* Continue with Google */}
           <button

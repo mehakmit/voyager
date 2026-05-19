@@ -41,9 +41,13 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
 
+      - name: Compute build number
+        id: buildnum
+        run: echo "num=$(( ${{ github.run_number }} - 20 ))" >> $GITHUB_OUTPUT
+
       - name: Build and upload to TestFlight
         run: cd ios/App && fastlane beta
         env:
           ASC_KEY_ID:     ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID:  ${{ secrets.ASC_ISSUER_ID }}
-          BUILD_NUMBER:   ${{ github.run_number }}
+          BUILD_NUMBER:   ${{ steps.buildnum.outputs.num }}

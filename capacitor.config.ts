@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Odyssey',
   webDir: 'dist',
   server: {
-    url: 'https://voyager-301a2.web.app',
+    url: 'https://myodyssey.live',
     cleartext: false,
   },
   ios: {

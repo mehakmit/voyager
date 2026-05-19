@@ -11,7 +11,7 @@ export default function TripSettingsModal({ trip, onClose }: { trip: Trip; onClo
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  const inviteUrl = `${window.location.origin}/join/${trip.inviteToken}`
+  const inviteUrl = `https://myodyssey.live/join/${trip.inviteToken}`
 
   async function copyInvite() {
     await navigator.clipboard.writeText(inviteUrl)
